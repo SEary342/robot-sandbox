@@ -1,0 +1,16 @@
+[Unit]
+Description=Waveshare Gyro Service
+After=network.target
+
+[Service]
+Type=simple
+User=photon
+# Ensure this matches the folder where ICM20948.py and gyro_service.py live
+WorkingDirectory=/home/photon/gyro
+# Use the absolute path from 'which python'
+ExecStart=/home/photon/gyro/.venv/bin/python gyro_service.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
