@@ -1,154 +1,149 @@
 import wpilib
 import commands2
-import wpimath.geometry
-import wpimath.kinematics
+import wpimath.geometry as geom
+import wpimath.kinematics as kinematics
+import wpimath.estimator as estimator
+import ntcore
 import math
-import ntcore # Added for NetworkTables
+
 from photonlibpy.photonCamera import PhotonCamera
+from photonlibpy.photonPoseEstimator import PhotonPoseEstimator, PoseStrategy
+from robotpy_apriltag import AprilTagFieldLayout, AprilTagField
+
 from pathplannerlib.auto import AutoBuilder
 from pathplannerlib.config import RobotConfig, PIDConstants
 from pathplannerlib.controller import PPHolonomicDriveController
 
-# Constants
-CAMERA_HEIGHT_METERS = 0.5
-TARGET_HEIGHT_METERS = 2.5
-CAMERA_PITCH_RADIANS = math.radians(30.0)
-SHOOTER_PITCH_RADIANS = math.radians(45.0)
+# --- Physical Constants ---
+CAMERA_OFFSET_X = 0.2  # Meters forward from center
+CAMERA_OFFSET_Y = 0.0  # Meters left/right from center
+CAMERA_HEIGHT = 0.5    # Meters from ground
+CAMERA_PITCH = math.radians(-30.0) # 30 degrees tilted UP
+
+TARGET_HEIGHT_METERS = 2.5 # Target height (e.g. Speaker)
 SHOOTER_HEIGHT_METERS = 0.5
 GRAVITY = 9.81
-YAW_TOLERANCE = 3.0
-
-class Shooter(commands2.Subsystem):
-    def __init__(self):
-        super().__init__()
-    def set_velocity(self, velocity: float): pass
-    def stop(self): pass
-
-class Climber(commands2.Subsystem):
-    def __init__(self):
-        super().__init__()
-    def deploy_hooks(self): pass
-    def climb(self): pass
 
 class MyRobot(commands2.TimedCommandRobot):
     def robotInit(self):
-        # --- NetworkTables / Gyro Initialization ---
+        # 1. NetworkTables & Sense HAT Gyro
         self.inst = ntcore.NetworkTableInstance.getDefault()
         self.sensehat_table = self.inst.getTable("SenseHat")
-        # The 'yaw' entry published by your Pi script
         self.gyro_yaw_entry = self.sensehat_table.getDoubleTopic("yaw").getEntry(0.0)
-        
-        # --- PhotonVision Initialization ---
+
+        # 2. PhotonVision & AprilTag Setup
         self.camera = PhotonCamera("Arducam_OV9281_USB_Camera")
+        
+        # Load the 2024 Field Layout for X,Y coordinate translation
+        self.field_layout = AprilTagFieldLayout.loadField(AprilTagField.k2025ReefscapeWelded)
+        
+        # Define where the camera is on the robot
+        robot_to_camera = geom.Transform3d(
+            geom.Translation3d(CAMERA_OFFSET_X, CAMERA_OFFSET_Y, CAMERA_HEIGHT),
+            geom.Rotation3d(0, CAMERA_PITCH, 0)
+        )
 
-        # --- Subsystems ---
-        self.shooter = Shooter()
-        self.climber = Climber()
+        # This object handles turning "Tag ID" into "X, Y coordinates"
+        self.photon_estimator = PhotonPoseEstimator(
+            self.field_layout,
+            PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR,
+            self.camera,
+            robot_to_camera
+        )
 
-        # --- Drivetrain & PathPlanner State ---
-        # We initialize the pose using the current gyro heading
-        self.pose = wpimath.geometry.Pose2d(0, 0, self.get_gyro_rotation())
+        # 3. Drivetrain Kinematics (Swerve Example)
+        # Offset of each module from robot center (Meters)
+        self.kinematics = kinematics.SwerveDrive4Kinematics(
+            geom.Translation2d(0.3, 0.3),   # Front Left
+            geom.Translation2d(0.3, -0.3),  # Front Right
+            geom.Translation2d(-0.3, 0.3),  # Back Left
+            geom.Translation2d(-0.3, -0.3)  # Back Right
+        )
+        
+        # 4. Main Pose Estimator (The "Brain")
+        # Fuses Wheels + Gyro + Vision into one X,Y,Theta Pose
+        self.pose_estimator = estimator.SwerveDrivePoseEstimator(
+            self.kinematics,
+            self.get_gyro_rotation(),
+            self.get_module_positions(),
+            geom.Pose2d()
+        )
 
-        def get_pose():
-            # In a full swerve implementation, you would use a PoseEstimator here.
-            # For now, we update the rotation part of the pose with the live gyro data.
-            return wpimath.geometry.Pose2d(self.pose.translation(), self.get_gyro_rotation())
-
-        def reset_pose(new_pose):
-            self.pose = new_pose
-            # Note: You may need a 'gyro_offset' if you want to zero the gyro in code.
-
-        def get_robot_relative_speeds():
-            return wpimath.kinematics.ChassisSpeeds()
-
-        def drive_robot_relative(speeds):
-            # Drive logic goes here
-            pass
-
-        self.auto_chooser = None
-
+        # 5. PathPlanner Configuration
         try:
             config = RobotConfig.fromGUISettings()
             AutoBuilder.configure(
-                get_pose,
-                reset_pose,
-                get_robot_relative_speeds,
-                drive_robot_relative,
+                self.get_estimated_pose,      # Pose supplier
+                self.reset_pose,               # Pose resetter
+                self.get_chassis_speeds,       # Robot-relative speed supplier
+                self.drive_robot_relative,     # Output function
                 PPHolonomicDriveController(
-                    PIDConstants(5.0, 0.0, 0.0),
-                    PIDConstants(5.0, 0.0, 0.0),
+                    PIDConstants(5.0, 0.0, 0.0), # Translation PID
+                    PIDConstants(5.0, 0.0, 0.0)  # Rotation PID
                 ),
                 config,
-                self.shouldFlipPath,
+                self.should_flip_path,
                 self
             )
             self.auto_chooser = AutoBuilder.buildAutoChooser()
             wpilib.SmartDashboard.putData("Auto Mode", self.auto_chooser)
         except Exception as e:
-            wpilib.reportError(f"PathPlanner configuration failed: {e}")
+            wpilib.reportError(f"PathPlanner failed: {e}")
 
-    def get_gyro_rotation(self) -> wpimath.geometry.Rotation2d:
-        """Helper to get Rotation2d from the Sense HAT gyro data."""
-        # Waveshare/AHRS output is usually CCW positive (standard).
-        # If your robot turns left and the value decreases, add a '-' before the get().
-        yaw_deg = self.gyro_yaw_entry.get()
-        return wpimath.geometry.Rotation2d.fromDegrees(yaw_deg)
+    # --- Sensor Data Methods ---
 
-    def shouldFlipPath(self):
+    def get_gyro_rotation(self) -> geom.Rotation2d:
+        """Get rotation from Raspberry Pi."""
+        return geom.Rotation2d.fromDegrees(self.gyro_yaw_entry.get())
+
+    def get_module_positions(self):
+        """TODO: Replace with actual encoder data from your swerve modules."""
+        return (kinematics.SwerveModulePosition(), kinematics.SwerveModulePosition(),
+                kinematics.SwerveModulePosition(), kinematics.SwerveModulePosition())
+
+    def get_estimated_pose(self) -> geom.Pose2d:
+        return self.pose_estimator.getEstimatedPosition()
+
+    def reset_pose(self, pose: geom.Pose2d):
+        self.pose_estimator.resetPosition(self.get_gyro_rotation(), self.get_module_positions(), pose)
+
+    def get_chassis_speeds(self) -> kinematics.ChassisSpeeds:
+        # TODO: Calculate from motor encoders
+        return kinematics.ChassisSpeeds()
+
+    def drive_robot_relative(self, speeds: kinematics.ChassisSpeeds):
+        # TODO: Command your swerve modules using these speeds
+        pass
+
+    def should_flip_path(self):
         return wpilib.DriverStation.getAlliance() == wpilib.DriverStation.Alliance.kRed
+
+    # --- Main Loop ---
 
     def robotPeriodic(self):
         super().robotPeriodic()
         
-        # Update Dashboard with Gyro info
-        wpilib.SmartDashboard.putNumber("Gyro/Yaw", self.get_gyro_rotation().degrees())
+        # 1. Update Position using Wheels and Sense HAT Gyro
+        self.pose_estimator.update(self.get_gyro_rotation(), self.get_module_positions())
 
-        ready, velocity = self.get_shooting_solution()
-        if self.isEnabled():
-            if ready:
-                self.shooter.set_velocity(velocity)
-            else:
-                self.shooter.stop()
-        self.update_dashboard(ready, velocity)
+        # 2. Update Position using PhotonVision (AprilTags)
+        # This finds the robot's X,Y coordinates on the field
+        vision_result = self.photon_estimator.update()
+        if vision_result:
+            estimated_pose = vision_result.estimatedPose.toPose2d()
+            self.pose_estimator.addVisionMeasurement(estimated_pose, vision_result.timestampSeconds)
 
-    def update_dashboard(self, ready, velocity):
-        wpilib.SmartDashboard.putBoolean("Shooter/Ready", ready)
-        wpilib.SmartDashboard.putNumber("Shooter/TargetVelocity", velocity)
-
-    def get_shooting_solution(self):
-        result = self.camera.getLatestResult()
-        if not result.hasTargets():
-            return False, 0.0
-
-        target = result.getBestTarget()
-        if abs(target.getYaw()) > YAW_TOLERANCE:
-            return False, 0.0
-
-        distance = (TARGET_HEIGHT_METERS - CAMERA_HEIGHT_METERS) / math.tan(
-            CAMERA_PITCH_RADIANS + math.radians(target.getPitch())
-        )
-
-        if distance < 1.5 or distance > 6.0:
-            return False, 0.0
-
-        h = TARGET_HEIGHT_METERS - SHOOTER_HEIGHT_METERS
-        if distance * math.tan(SHOOTER_PITCH_RADIANS) <= h:
-            return False, 0.0
-
-        velocity = (distance / math.cos(SHOOTER_PITCH_RADIANS)) * math.sqrt(
-            GRAVITY / (2 * (distance * math.tan(SHOOTER_PITCH_RADIANS) - h))
-        )
-        return True, velocity
+        # 3. Telemetry to Shuffleboard
+        pose = self.get_estimated_pose()
+        wpilib.SmartDashboard.putNumber("Robot/Field_X", pose.X())
+        wpilib.SmartDashboard.putNumber("Robot/Field_Y", pose.Y())
+        wpilib.SmartDashboard.putNumber("Robot/Gyro_Heading", pose.rotation().degrees())
 
     def autonomousInit(self):
-        if self.auto_chooser:
-            self.autonomous_command = self.auto_chooser.getSelected()
-            if self.autonomous_command:
-                self.autonomous_command.schedule()
-
-    def teleopInit(self):
-        if hasattr(self, "autonomous_command") and self.autonomous_command:
-            self.autonomous_command.cancel()
+        if hasattr(self, "auto_chooser"):
+            self.auto_command = self.auto_chooser.getSelected()
+            if self.auto_command:
+                self.auto_command.schedule()
 
 if __name__ == "__main__":
     wpilib.run(MyRobot)
