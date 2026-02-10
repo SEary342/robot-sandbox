@@ -3,6 +3,35 @@
 # on your RoboRIO
 #
 
+[tool.robotpy]
+
+# Version of robotpy this project depends on
+robotpy_version = "2026.1.1"
+
+# Which extra RobotPy components should be installed
+# -> equivalent to `pip install robotpy[extra1, ...]
+components = [
+    # "all",
+    "apriltag",
+    "commands2",
+    # "cscore",
+    # "navx",
+    "pathplannerlib",
+    # "phoenix5",
+    # "phoenix6",
+    "photonvision",
+    # "playingwithfusion",
+    "rev",
+    # "romi",
+    # "sim",
+    # "xrp",
+]
+
+# Other pip packages to install
+requires = [
+    # "robotpy-rev",
+]
+
 [project]
 name = "robot-sandbox"
 version = "0.1.0"
@@ -13,40 +42,10 @@ dependencies = [
     "photonlibpy>=2026.0.1",
     "robotpy>=2025.3.2.2",
     "robotpy-pathplannerlib>=2025.2.7",
+    "robotpy-rev>=2026.0.1",
 ]
 
 [dependency-groups]
 dev = [
     "ruff>=0.14.13",
 ]
-
-
-[tool.robotpy]
-
-# Version of robotpy this project depends on
-robotpy_version = "2025.3.2.2"
-
-# Which extra RobotPy components should be installed
-# -> equivalent to `pip install robotpy[extra1, ...]
-robotpy_extras = [
-    # "all",
-    # "apriltag",
-    # "commands2",
-    # "cscore",
-    # "navx",
-    # "pathplannerlib",
-    # "phoenix5",
-    # "phoenix6",
-    # "rev",
-    # "romi",
-    # "sim",
-    # "xrp",
-]
-
-# Other pip packages to install
-requires = [
-    "photonlibpy>=2026.0.1",
-    "robotpy>=2025.3.2.2",
-    "robotpy-pathplannerlib>=2025.2.7",
-]
-
