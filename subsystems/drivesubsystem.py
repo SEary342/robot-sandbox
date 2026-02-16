@@ -119,7 +119,7 @@ class DriveSubsystem(Subsystem):
         # --- Vision Setup ---
         try:
             self.camera = PhotonCamera("Arducam_OV9281_USB_Camera")
-            self.field_layout = AprilTagFieldLayout.loadField(AprilTagField.k2025ReefscapeWelded)
+            self.field_layout = AprilTagFieldLayout.loadField(AprilTagField.k2026RebuiltAndyMark)
             robot_to_camera = Transform3d(
                 Translation3d(constants.kCameraOffsetX, constants.kCameraOffsetY, constants.kCameraHeight),
                 Rotation3d(0, constants.kCameraPitch, 0)

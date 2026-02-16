@@ -43,6 +43,7 @@ dependencies = [
     "robotpy>=2025.3.2.2",
     "robotpy-pathplannerlib>=2025.2.7",
     "robotpy-rev>=2026.0.1",
+    "robotpy-wpimath>=2026.2.1",
 ]
 
 [dependency-groups]
