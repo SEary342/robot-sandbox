@@ -49,3 +49,29 @@ kCameraOffsetX = 0.2
 kCameraOffsetY = 0.0
 kCameraHeight = 0.5
 kCameraPitch = math.radians(-30.0)
+
+# Shooter Constants
+kShooterMotorCAN = 15
+
+# PID Constants
+kShooterP = 0.0005
+kShooterI = 0.0
+kShooterD = 0.0
+kShooterFF = 0.00017
+kShooterMaxOutput = 1.0
+kShooterMinOutput = -1.0
+
+kShooterMaxRPM = 5700
+kShooterToleranceRPM = 50
+kShooterMinRange = 1.0
+kShooterMaxRange = 6.5
+
+# Experimental Data: Distance (meters) -> Speed (RPM)
+kShooterDistanceToRPM = {
+    1.5: 2500,
+    2.0: 2800,
+    3.0: 3500,
+    4.0: 4200,
+    5.0: 4800,
+    6.0: 5500
+}

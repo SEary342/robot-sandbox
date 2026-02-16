@@ -117,6 +117,7 @@ class DriveSubsystem(Subsystem):
         SmartDashboard.putData("Field", self.field)
 
         # --- Vision Setup ---
+        self.field_layout = None
         try:
             self.camera = PhotonCamera("Arducam_OV9281_USB_Camera")
             self.field_layout = AprilTagFieldLayout.loadField(AprilTagField.k2026RebuiltAndyMark)
@@ -292,6 +293,14 @@ class DriveSubsystem(Subsystem):
     def getTurnRate(self):
         """Returns the turn rate of the robot."""
         return 0.0 # Rate not currently implemented from SenseHat
+
+    def getDistanceToTag(self, tag_id: int) -> float:
+        """Returns the distance from the robot to a specific AprilTag (e.g. Speaker)."""
+        if self.field_layout is not None:
+            tag_pose = self.field_layout.getTagPose(tag_id)
+            if tag_pose is not None:
+                return self.getPose().translation().distance(tag_pose.toPose2d().translation())
+        return -1.0
 
 
 def _getFollowMotorConfig(leadCanID, inverted):

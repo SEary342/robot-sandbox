@@ -17,6 +17,7 @@ import commands2
 
 from pathplannerlib.auto import AutoBuilder
 from subsystems.drivesubsystem import DriveSubsystem, BadSimPhysics
+from subsystems.shootersubsystem import ShooterSubsystem
 
 import constants
 
@@ -32,6 +33,7 @@ class RobotContainer:
     def __init__(self, robot):
         # The robot's subsystems
         self.robotDrive = DriveSubsystem()
+        self.shooter = ShooterSubsystem()
 
         # The driver's controller.
         self.driverController = CommandGenericHID(constants.kDriverControllerPort)
@@ -50,6 +52,9 @@ class RobotContainer:
             ),
             self.robotDrive
         ))
+
+        # Default command for shooter is to stop (coast)
+        self.shooter.setDefaultCommand(RunCommand(self.shooter.stop, self.shooter))
 
         if commands2.TimedCommandRobot.isSimulation():
             self.robotDrive.simPhysics = BadSimPhysics(self.robotDrive, robot)
@@ -77,6 +82,16 @@ class RobotContainer:
             )
         )
 
+        # example 4: when Right Bumper is held, spin up shooter based on distance to Tag 7
+        # (Tag 7 is Blue Speaker, Tag 4 is Red Speaker)
+        self.driverController.rightBumper().whileTrue(
+            RunCommand(
+                lambda: self.shooter.setSpeedFromDistance(
+                    self.robotDrive.getDistanceToTag(7)
+                ),
+                self.shooter
+            )
+        )
 
     def getAutonomousCommand(self) -> commands2.Command:
         """
