@@ -12,7 +12,7 @@ from wpimath.geometry import Pose2d, Rotation2d
 import wpilib
 
 from commands2 import InstantCommand, RunCommand
-from commands2.button import CommandGenericHID
+from commands2.button import CommandXboxController
 import commands2
 
 from pathplannerlib.auto import AutoBuilder
@@ -36,7 +36,7 @@ class RobotContainer:
         self.shooter = ShooterSubsystem()
 
         # The driver's controller.
-        self.driverController = CommandGenericHID(constants.kDriverControllerPort)
+        self.driverController = CommandXboxController(constants.kDriverControllerPort)
 
         # Configure the button bindings
         self.configureButtonBindings()

@@ -1,7 +1,6 @@
 import rev
 from commands2 import Subsystem
 from wpilib import SmartDashboard
-from wpimath.interpolation import InterpolatingDoubleTreeMap
 import constants
 
 class ShooterSubsystem(Subsystem):
@@ -10,7 +9,6 @@ class ShooterSubsystem(Subsystem):
         
         # Initialize the motor
         self.shooterMotor = rev.SparkMax(constants.kShooterMotorCAN, rev.SparkMax.MotorType.kBrushless)
-        self.shooterMotor.restoreFactoryDefaults()
         
         # Configure the motor and PID controller
         config = rev.SparkBaseConfig()
@@ -25,10 +23,8 @@ class ShooterSubsystem(Subsystem):
         self.pidController = self.shooterMotor.getClosedLoopController()
         self.encoder = self.shooterMotor.getEncoder()
         
-        # Initialize the interpolation table with experimental data
-        self.rpmTable = InterpolatingDoubleTreeMap()
-        for dist, rpm in constants.kShooterDistanceToRPM.items():
-            self.rpmTable.put(dist, rpm)
+        # Cache sorted keys for interpolation
+        self.sorted_distances = sorted(constants.kShooterDistanceToRPM.keys())
             
         self.targetRPM = 0.0
 
@@ -39,7 +35,22 @@ class ShooterSubsystem(Subsystem):
         if distance < constants.kShooterMinRange or distance > constants.kShooterMaxRange:
             print(f"Warning: Distance {distance:.2f}m is out of effective range.")
             
-        target_rpm = self.rpmTable.get(distance)
+        # Linear Interpolation
+        if distance <= self.sorted_distances[0]:
+            target_rpm = constants.kShooterDistanceToRPM[self.sorted_distances[0]]
+        elif distance >= self.sorted_distances[-1]:
+            target_rpm = constants.kShooterDistanceToRPM[self.sorted_distances[-1]]
+        else:
+            # Find the two points bounding the distance
+            for i in range(len(self.sorted_distances) - 1):
+                d1 = self.sorted_distances[i]
+                d2 = self.sorted_distances[i+1]
+                if d1 <= distance <= d2:
+                    rpm1 = constants.kShooterDistanceToRPM[d1]
+                    rpm2 = constants.kShooterDistanceToRPM[d2]
+                    target_rpm = rpm1 + (distance - d1) * (rpm2 - rpm1) / (d2 - d1)
+                    break
+        
         self.setTargetRPM(target_rpm)
 
     def setTargetRPM(self, rpm: float):

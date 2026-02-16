@@ -18,7 +18,7 @@ from wpimath.geometry import Rotation2d, Pose2d, Transform3d, Translation3d, Rot
 from wpimath.estimator import DifferentialDrivePoseEstimator
 
 from photonlibpy.photonCamera import PhotonCamera
-from photonlibpy.photonPoseEstimator import PhotonPoseEstimator, PoseStrategy
+from photonlibpy.photonPoseEstimator import PhotonPoseEstimator
 from robotpy_apriltag import AprilTagFieldLayout, AprilTagField
 
 from pathplannerlib.auto import AutoBuilder
@@ -33,7 +33,6 @@ class DrivetrainConstants:
     initialD = 5.0 / 10000.0  # coincidentally same as initialP, but really does not need to be
     initialFF = 1.4 / 10000.0  # if setting it to nonzero, be careful and start small
     maxRPM = 3000
-
 
 class DriveSubsystem(Subsystem):
     # noinspection PyInterpreter
@@ -127,8 +126,6 @@ class DriveSubsystem(Subsystem):
             )
             self.photon_estimator = PhotonPoseEstimator(
                 self.field_layout,
-                PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR,
-                self.camera,
                 robot_to_camera
             )
         except Exception as e:
@@ -184,12 +181,19 @@ class DriveSubsystem(Subsystem):
             self.rightEncoder.getPosition() * constants.kRightEncoderSign,
         )
 
-        # 2. Update Pose Estimator with Vision
+        # 2. Update Pose Estimator with Vision, using the logic from the PhotonLib example
         if self.photon_estimator:
-            vision_result = self.photon_estimator.update()
-            if vision_result:
-                estimated_pose = vision_result.estimatedPose.toPose2d()
-                self.poseEstimator.addVisionMeasurement(estimated_pose, vision_result.timestampSeconds)
+            for result in self.camera.getAllUnreadResults():
+                # First, try to get a multi-tag estimate from the coprocessor.
+                est = self.photon_estimator.estimateCoprocMultiTagPose(result)
+                if est is None:
+                    # If that fails, fall back to a single-tag estimate with the lowest ambiguity.
+                    est = self.photon_estimator.estimateLowestAmbiguityPose(result)
+
+                # If we have a valid estimate, add it to the pose estimator.
+                if est is not None:
+                    estimated_pose = est.estimatedPose.toPose2d()
+                    self.poseEstimator.addVisionMeasurement(estimated_pose, est.timestampSeconds)
 
         # Update the pose of the robot (x, y, heading) on the SmartDashboard
         pose = self.getPose()
