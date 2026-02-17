@@ -11,6 +11,7 @@ class ShooterSubsystem(Subsystem):
         self.shooterMotor = rev.SparkMax(constants.kShooterMotorCAN, rev.SparkMax.MotorType.kBrushless)
         
         # Configure the motor and PID controller
+        # STUDENTS: This configures the "brain" inside the motor controller to keep speed constant.
         config = rev.SparkBaseConfig()
         config.setIdleMode(rev.SparkBaseConfig.IdleMode.kCoast)
         config.closedLoop.pid(constants.kShooterP, constants.kShooterI, constants.kShooterD)
@@ -24,6 +25,7 @@ class ShooterSubsystem(Subsystem):
         self.encoder = self.shooterMotor.getEncoder()
         
         # Cache sorted keys for interpolation
+        # This helps us calculate speed for distances between our known points.
         self.sorted_distances = sorted(constants.kShooterDistanceToRPM.keys())
             
         self.targetRPM = 0.0
@@ -75,6 +77,7 @@ class ShooterSubsystem(Subsystem):
 
     def periodic(self):
         # Publish data to SmartDashboard for debugging and driver feedback
+        # STUDENTS: This sends the numbers to the laptop screen so you can see them!
         SmartDashboard.putNumber("Shooter/TargetRPM", self.targetRPM)
         SmartDashboard.putNumber("Shooter/CurrentRPM", self.encoder.getVelocity())
         SmartDashboard.putNumber("Shooter/AppliedOutput", self.shooterMotor.getAppliedOutput())

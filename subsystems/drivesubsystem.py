@@ -38,6 +38,8 @@ class DriveSubsystem(Subsystem):
     # noinspection PyInterpreter
     def __init__(self,
                  usePIDController=True,
+                 # STUDENTS: If your robot drives backwards or spins in place,
+                 # change these True/False values!
                  l1MotorInverted=False,
                  l2MotorInverted=False,
                  r1MotorInverted=True,
@@ -118,24 +120,39 @@ class DriveSubsystem(Subsystem):
         # --- Vision Setup ---
         self.field_layout = None
         try:
+            # 1. Connect to the Camera
+            # "Arducam..." must match the Camera Name in the PhotonVision dashboard (http://photonvision.local:5800)
             self.camera = PhotonCamera("Arducam_OV9281_USB_Camera")
+
+            # 2. Load the Field Map
+            # This loads the official locations of all AprilTags for the current game.
             self.field_layout = AprilTagFieldLayout.loadField(AprilTagField.k2026RebuiltAndyMark)
+
+            # 3. Define Camera Position (Crucial!)
+            # We must tell the math exactly where the camera is relative to the center of the robot.
+            # constants.kCameraOffsetX/Y/Z are defined in constants.py
             robot_to_camera = Transform3d(
                 Translation3d(constants.kCameraOffsetX, constants.kCameraOffsetY, constants.kCameraHeight),
                 Rotation3d(0, constants.kCameraPitch, 0)
             )
+
+            # 4. Create the Pose Estimator
+            # This tool combines the Camera data + Field Map + Camera Position to calculate "Where am I?"
             self.photon_estimator = PhotonPoseEstimator(
                 self.field_layout,
                 robot_to_camera
             )
         except Exception as e:
+            # If the camera isn't plugged in or PhotonVision isn't running, this prevents the code from crashing.
             print(f"Vision Init Failed: {e}")
             self.photon_estimator = None
 
         # --- PathPlanner Setup ---
+        # PathPlanner is a tool that lets us draw paths on a computer and have the robot follow them.
         try:
             self.configurePathPlanner()
         except Exception as e:
+            # If something goes wrong (like the config file is missing), don't crash the whole robot.
             print(f"PathPlanner Config Failed: {e}")
 
         SmartDashboard.setDefaultNumber("driveKPMult", 0.5)
@@ -147,26 +164,42 @@ class DriveSubsystem(Subsystem):
         self.simPhysics = None
 
     def configurePathPlanner(self):
+        """
+        This function connects the PathPlanner library to our specific robot code.
+        It tells PathPlanner how to read our position and how to make the wheels spin.
+        """
+        # Load the robot settings (width, max speed) from the GUI file
         config = RobotConfig.fromGUISettings()
+
+        # Configure the "Ramsete" controller. 
+        # Ramsete is a specific math algorithm good for tank-drive robots (like this one).
         AutoBuilder.configureRamsete(
-            self.getPose,
-            self.resetOdometry,
-            self.getChassisSpeeds,
-            self.driveChassisSpeeds,
-            config,
-            self.shouldFlipPath,
-            self
+            self.getPose,            # "Where am I?" (Function that returns x, y, angle)
+            self.resetOdometry,      # "Start here!" (Function to reset position at start of auto)
+            self.getChassisSpeeds,   # "How fast am I going?" (Current speed)
+            self.driveChassisSpeeds, # "Move!" (Function to set motor speeds)
+            config,                  # The robot settings we loaded above
+            self.shouldFlipPath,     # "Am I on the Red Alliance?" (Flips path if needed)
+            self                     # The subsystem (this file)
         )
 
     def shouldFlipPath(self):
+        # PathPlanner needs to know if we are on the Red Alliance.
+        # If we are, it flips the path so we don't drive into the wall!
         return DriverStation.getAlliance() == DriverStation.Alliance.kRed
 
     def stop(self):
+        """
+        Safely stops the robot.
+        """
         self.desiredLeftVelocity = 0
         self.desiredRightVelocity = 0
+        
+        # If we are using the basic DifferentialDrive (no PID), just stop.
         if self.diffDrive:
             self.diffDrive.stopMotor()
         else:
+            # If we are using PID, tell the motor controllers to target 0 RPM.
             self.leftPIDController.setReference(0, rev.SparkBase.ControlType.kVelocity)
             self.rightPIDController.setReference(0, rev.SparkBase.ControlType.kVelocity)
 
@@ -174,6 +207,7 @@ class DriveSubsystem(Subsystem):
         if self.simPhysics is not None:
             self.simPhysics.periodic()
 
+        # --- Odometry Update (Where is the robot?) ---
         # 1. Update Pose Estimator with Encoders + Gyro
         self.poseEstimator.update(
             self.getGyroHeading(),
@@ -244,6 +278,8 @@ class DriveSubsystem(Subsystem):
 
         # use curves to take smoother input from human
         if assumeManualInput:
+            # Cubing the input (x^3) makes the joystick less sensitive near the center.
+            # This helps the driver make small adjustments without jerking the robot.
             fwd = fwd * fwd * fwd
             rot = rot * abs(rot)
 
@@ -252,6 +288,9 @@ class DriveSubsystem(Subsystem):
         if rot < -1:
             rot = -1
 
+        # Prevent "Motor Saturation" (asking for > 100% power).
+        # If we try to go 100% Forward AND 100% Turn, the math would ask one motor for 200%.
+        # This logic prioritizes Turning. If you turn 60%, you can only go forward 40%.
         speedLimit = max((0, 1 - abs(rot)))
         if fwd > speedLimit:
             fwd = speedLimit
@@ -259,6 +298,8 @@ class DriveSubsystem(Subsystem):
             fwd = -speedLimit
         # ^^ when asked to rotate at speed 0.6, we can only drive forward at speedLimit=1-0.6=0.4
 
+        # Calculate target RPM for each side
+        # Left = Forward - Turn, Right = Forward + Turn
         self.desiredRightVelocity = (fwd + rot) * DrivetrainConstants.maxRPM
         self.desiredLeftVelocity = (fwd - rot) * DrivetrainConstants.maxRPM
 
@@ -267,31 +308,45 @@ class DriveSubsystem(Subsystem):
             self.diffDrive.arcadeDrive(fwd, rot)
         else:
             # use Rev PID control for better speed and acceleration
+            # This tells the SparkMax: "Spin at exactly this RPM, no matter the load."
             self.leftPIDController.setReference(self.desiredLeftVelocity, rev.SparkBase.ControlType.kVelocity)
             self.rightPIDController.setReference(self.desiredRightVelocity, rev.SparkBase.ControlType.kVelocity)
 
     def getAverageEncoderDistance(self):
-        """Gets the average distance of the two encoders."""
+        """
+        Gets the average distance of the two encoders.
+        Useful for simple autonomous commands like "Drive forward 2 meters".
+        """
         return (self.leftEncoder.getPosition() * constants.kLeftEncoderSign +
                 self.rightEncoder.getPosition() * constants.kRightEncoderSign) / 2
 
     def setMaxOutput(self, maxOutput):
-        """Sets the max output of the drive. Useful for scaling the drive to drive more slowly."""
+        """
+        Sets the max output of the drive. Useful for scaling the drive to drive more slowly.
+        Example: setMaxOutput(0.5) makes the robot go half speed max.
+        """
         if self.diffDrive:
             self.diffDrive.setMaxOutput(maxOutput)
 
     def zeroHeading(self):
-        """Zeroes the heading of the robot."""
-        # Since we can't easily reset the remote SenseHat, we store an offset
+        """
+        Resets the Gyro so the current direction becomes "0 degrees" (Forward).
+        Call this at the start of a match!
+        """
+        # Since we can't easily reset the remote SenseHat hardware, we just remember 
+        # the current value and subtract it from future readings.
         self.gyroOffset = self.gyro_yaw_entry.get()
 
     def getHeading(self):
-        """Returns the heading of the robot."""
+        """Returns the direction the robot is facing (0 to 360 degrees)."""
         return self.getPose().rotation()
 
     def getGyroHeading(self):
-        """Returns the heading of the robot."""
+        """
+        Reads the raw angle from the Raspberry Pi SenseHat.
+        """
         raw_yaw = self.gyro_yaw_entry.get()
+        # Subtract the offset to account for when we pressed "Reset Gyro"
         return Rotation2d.fromDegrees(raw_yaw - self.gyroOffset)
 
     def getTurnRate(self):
@@ -299,15 +354,24 @@ class DriveSubsystem(Subsystem):
         return 0.0 # Rate not currently implemented from SenseHat
 
     def getDistanceToTag(self, tag_id: int) -> float:
-        """Returns the distance from the robot to a specific AprilTag (e.g. Speaker)."""
+        """
+        Calculates the straight-line distance to a specific AprilTag.
+        Useful for shooting: "If I am 3 meters away, spin shooter to 3500 RPM".
+        """
         if self.field_layout is not None:
+            # 1. Find where the tag is on the field map
             tag_pose = self.field_layout.getTagPose(tag_id)
             if tag_pose is not None:
+                # 2. Calculate distance between Robot (getPose) and Tag
                 return self.getPose().translation().distance(tag_pose.toPose2d().translation())
         return -1.0
 
 
 def _getFollowMotorConfig(leadCanID, inverted):
+    """
+    Creates settings for a 'Follower' motor.
+    A follower motor just copies what the 'Leader' motor does.
+    """
     config = rev.SparkBaseConfig()
     config.follow(leadCanID, inverted)
     return config
@@ -317,13 +381,25 @@ def _getLeadMotorConfig(
     inverted: bool,
     positionFactor: float,
 ) -> rev.SparkBaseConfig:
+    """
+    Creates settings for a 'Leader' motor.
+    This sets up the brakes, the encoder math, and the PID (speed control) settings.
+    """
     config = rev.SparkBaseConfig()
     config.inverted(inverted)
+
+    # Brake mode: The robot stops quickly when you let go of the stick.
     config.setIdleMode(rev.SparkBaseConfig.IdleMode.kBrake)
+
+    # Disable limit switches (we don't use them on wheels)
     config.limitSwitch.forwardLimitSwitchEnabled(False)
     config.limitSwitch.reverseLimitSwitchEnabled(False)
+
+    # Convert "Rotations" to "Meters"
     config.encoder.positionConversionFactor(positionFactor)
     #config.encoder.velocityConversionFactor(positionFactor / 60)  # 60 seconds per minute
+
+    # Setup PID (The math that keeps speed constant)
     config.closedLoop.pid(DrivetrainConstants.initialP, 0.0, DrivetrainConstants.initialD)
     config.closedLoop.velocityFF(DrivetrainConstants.initialFF)
     config.closedLoop.outputRange(-1, +1)

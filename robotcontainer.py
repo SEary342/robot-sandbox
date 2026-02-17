@@ -31,6 +31,7 @@ class RobotContainer:
     """
 
     def __init__(self, robot):
+        # --- 1. Setup Subsystems (The Robot's Body Parts) ---
         # The robot's subsystems
         self.robotDrive = DriveSubsystem()
         self.shooter = ShooterSubsystem()
@@ -38,12 +39,14 @@ class RobotContainer:
         # The driver's controller.
         self.driverController = CommandXboxController(constants.kDriverControllerPort)
 
+        # --- 2. Configure Controls (Buttons) ---
         # Configure the button bindings
         self.configureButtonBindings()
         self.configureAutos()
 
         # Configure default subsystems
         # Set the default drive command to split-stick arcade drive
+        # This runs whenever no other drive command is happening.
         self.robotDrive.setDefaultCommand(RunCommand(
             lambda: self.robotDrive.arcadeDrive(
                 -self.driverController.getRawAxis(XboxController.Axis.kLeftY),
@@ -64,6 +67,8 @@ class RobotContainer:
         Use this method to define your button->command mappings. Buttons can be created by
         instantiating a GenericHID or one of its subclasses (Joystick or XboxController),
         and then calling passing it to a JoystickButton.
+        
+        STUDENTS: This is where you tell the robot what buttons do what!
         """
 
         # example 2: when "POV-up" button pressed, reset robot field position to "facing North"
@@ -103,6 +108,7 @@ class RobotContainer:
     def configureAutos(self):
         try:
             self.chosenAuto = AutoBuilder.buildAutoChooser()
+            # STUDENTS: This puts the "Auto Chooser" dropdown on the dashboard
             wpilib.SmartDashboard.putData("Chosen Auto", self.chosenAuto)
         except Exception as e:
             wpilib.reportError(f"AutoBuilder failed: {e}")
