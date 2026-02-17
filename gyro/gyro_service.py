@@ -31,6 +31,11 @@ def run_service():
             imu.icm20948_Gyro_Accel_Read()
             imu.icm20948MagRead()
 
+            if sum(ws_vars.Accel) == 0:
+                print("Waiting for valid IMU data...")
+                time.sleep(0.1)
+                continue
+
             # Scale raw data to Degrees Per Second (32.8 is the scale factor for 1000DPS)
             # Using the global arrays defined in your ICM20948.py
             gz_dps = ws_vars.Gyro[2] / 32.8

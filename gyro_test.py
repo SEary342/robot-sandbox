@@ -8,7 +8,7 @@ def main():
     # If the RoboRIO isn't on, use the Pi's IP instead: inst.setServer("10.97.21.XX")
     print("Connecting to NetworkTables...")
     #inst.setServerTeam(9721) 
-    inst.setServer("192.168.8.178")
+    inst.setServer("192.168.8.205")
     inst.startClient4("LaptopDebugger")
 
     # 2. Access the table the Pi is writing to
