@@ -102,14 +102,21 @@ class RobotContainer:
         """
         :returns: the command to run in autonomous
         """
-        command = self.chosenAuto.getSelected()
-        return command()
+        # Check if chosenAuto exists and has a selection
+        if self.chosenAuto is not None:
+            return self.chosenAuto.getSelected()
+        
+        # Fallback: Return a command that does nothing so the robot doesn't crash
+        return commands2.PrintCommand("No autonomous command selected or AutoBuilder failed")
 
     def configureAutos(self):
+        # Initialize the attribute to None first
+        self.chosenAuto = None 
+        
         try:
             self.chosenAuto = AutoBuilder.buildAutoChooser()
-            # STUDENTS: This puts the "Auto Chooser" dropdown on the dashboard
-            wpilib.SmartDashboard.putData("Chosen Auto", self.chosenAuto)
+            if self.chosenAuto is not None:
+                wpilib.SmartDashboard.putData("Chosen Auto", self.chosenAuto)
         except Exception as e:
             wpilib.reportError(f"AutoBuilder failed: {e}")
 
