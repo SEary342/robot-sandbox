@@ -18,6 +18,9 @@ from wpimath.kinematics import DifferentialDriveKinematics
 #  Students: This is the main place to change numbers!
 # =============================================================================
 
+# Set to True if testing on a bench without camera/motors to prevent crashes
+kTestBench = False
+
 # ID for the driver's joystick.
 kDriverControllerPort = 0 # CHECK: Is your controller plugged into port 0 in Driver Station?
 

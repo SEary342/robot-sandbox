@@ -23,6 +23,7 @@ from robotpy_apriltag import AprilTagFieldLayout, AprilTagField
 
 from pathplannerlib.auto import AutoBuilder
 from pathplannerlib.config import RobotConfig
+from pathplannerlib.controller import PPLTVController
 
 import constants
 import rev
@@ -30,68 +31,90 @@ import rev
 
 class DrivetrainConstants:
     initialP = 2.5 / 10000.0
-    initialD = 5.0 / 10000.0  # coincidentally same as initialP, but really does not need to be
+    initialD = (
+        5.0 / 10000.0
+    )  # coincidentally same as initialP, but really does not need to be
     initialFF = 1.4 / 10000.0  # if setting it to nonzero, be careful and start small
     maxRPM = 3000
 
+
 class DriveSubsystem(Subsystem):
     # noinspection PyInterpreter
-    def __init__(self,
-                 usePIDController=True,
-                 # STUDENTS: If your robot drives backwards or spins in place,
-                 # change these True/False values!
-                 l1MotorInverted=False,
-                 l2MotorInverted=False,
-                 r1MotorInverted=True,
-                 r2MotorInverted=True
+    def __init__(
+        self,
+        usePIDController=True,
+        # STUDENTS: If your robot drives backwards or spins in place,
+        # change these True/False values!
+        l1MotorInverted=False,
+        l2MotorInverted=False,
+        r1MotorInverted=True,
+        r2MotorInverted=True,
     ):
         super().__init__()
 
         self.desiredLeftVelocity = 0.0
         self.desiredRightVelocity = 0.0
 
-        # The motors on the left side of the drive.
-        self.motorL1 = rev.SparkMax(constants.kLeftMotor1CAN, rev.SparkMax.MotorType.kBrushless)
+        # --- Motor Initialization ---
+        if constants.kTestBench:
+            print("Running in TEST BENCH mode (Drive motors)")
+            # In test bench mode, we only initialize the motors we expect to be connected
+            # to prevent CAN timeout errors. Here, we assume motors with CAN IDs
+            # kLeftMotor1CAN (1) and kLeftMotor2CAN (2) are present.
+            self.motorL1 = rev.SparkMax(constants.kLeftMotor1CAN, rev.SparkMax.MotorType.kBrushless)
+            self.motorL2 = None
+            # We'll use the motor with ID 2 as our "right" motor on the bench.
+            self.motorR1 = rev.SparkMax(constants.kLeftMotor2CAN, rev.SparkMax.MotorType.kBrushless)
+            self.motorR2 = None
+        else:
+            # In normal robot mode, initialize all four motors from constants.
+            self.motorL1 = rev.SparkMax(constants.kLeftMotor1CAN, rev.SparkMax.MotorType.kBrushless)
+            self.motorL2 = rev.SparkMax(constants.kLeftMotor2CAN, rev.SparkMax.MotorType.kBrushless)
+            self.motorR1 = rev.SparkMax(constants.kRightMotor1CAN, rev.SparkMax.MotorType.kBrushless)
+            self.motorR2 = rev.SparkMax(constants.kRightMotor2CAN, rev.SparkMax.MotorType.kBrushless)
+
+        # --- Motor Configuration ---
+        # Configure the "lead" motors. These are the ones with encoders.
         self.motorL1.configure(
             _getLeadMotorConfig(l1MotorInverted, constants.kEncoderPositionConversionFactor),
             ResetMode.kResetSafeParameters,
-            PersistMode.kPersistParameters)
-
-        self.motorL2 = rev.SparkMax(constants.kLeftMotor2CAN, rev.SparkMax.MotorType.kBrushless)
-        self.motorL2.configure(
-            _getFollowMotorConfig(constants.kLeftMotor1CAN, l2MotorInverted != l1MotorInverted),
-            ResetMode.kResetSafeParameters,
-            PersistMode.kPersistParameters)
-
-        # The motors on the right side of the drive.
-        self.motorR1 = rev.SparkMax(constants.kRightMotor1CAN, rev.SparkMax.MotorType.kBrushless)
+            PersistMode.kPersistParameters,
+        )
         self.motorR1.configure(
             _getLeadMotorConfig(r1MotorInverted, constants.kEncoderPositionConversionFactor),
             ResetMode.kResetSafeParameters,
-            PersistMode.kPersistParameters)
+            PersistMode.kPersistParameters,
+        )
 
-        self.motorR2 = rev.SparkMax(constants.kRightMotor2CAN, rev.SparkMax.MotorType.kBrushless)
-        self.motorR2.configure(
-            _getFollowMotorConfig(constants.kRightMotor1CAN, r2MotorInverted != r1MotorInverted),
-            ResetMode.kResetSafeParameters,
-            PersistMode.kPersistParameters)
+        # Configure the "follower" motors, but only if they were initialized (not in test bench mode).
+        if self.motorL2:
+            self.motorL2.configure(
+                _getFollowMotorConfig(constants.kLeftMotor1CAN, l2MotorInverted != l1MotorInverted),
+                ResetMode.kResetSafeParameters,
+                PersistMode.kPersistParameters,
+            )
+        if self.motorR2:
+            self.motorR2.configure(
+                _getFollowMotorConfig(constants.kRightMotor1CAN, r2MotorInverted != r1MotorInverted),
+                ResetMode.kResetSafeParameters,
+                PersistMode.kPersistParameters,
+            )
 
         if usePIDController:
-            # do not use basic differential drive, take advantage of low-level PID control from Rev
+            # Use the SparkMax's built-in PID controller for velocity control.
             self.diffDrive = None
             self.leftMotors = None
             self.rightMotors = None
             self.leftPIDController = self.motorL1.getClosedLoopController()
             self.rightPIDController = self.motorR1.getClosedLoopController()
         else:
-            # use the basic differential drive (robot will be less responsive and slower)
-            # We need to invert one side of the drivetrain so that positive voltages
-            # result in both sides moving forward. Depending on how your robot's
-            # gearbox is constructed, you might have to invert the left side instead.
-            self.leftMotors = MotorControllerGroup(self.motorL1, self.motorL2)
-            self.rightMotors = MotorControllerGroup(self.motorR1, self.motorR2)
+            # Use the basic WPILib DifferentialDrive. This is simpler but less precise.
+            # Create MotorControllerGroups. If a follower motor is None (in test bench mode),
+            # the group will just contain the lead motor.
+            self.leftMotors = MotorControllerGroup(*[m for m in [self.motorL1, self.motorL2] if m])
+            self.rightMotors = MotorControllerGroup(*[m for m in [self.motorR1, self.motorR2] if m])
             self.rightMotors.setInverted(True)
-            self.diffDrive = DifferentialDrive(self.motorL1, self.motorR1)
+            self.diffDrive = DifferentialDrive(self.leftMotors, self.rightMotors)
 
         # The left-side drive encoder
         self.leftEncoder = self.motorL1.getEncoder()
@@ -111,7 +134,7 @@ class DriveSubsystem(Subsystem):
             self.getGyroHeading(),
             self.leftEncoder.getPosition() * constants.kLeftEncoderSign,
             self.rightEncoder.getPosition() * constants.kRightEncoderSign,
-            Pose2d()
+            Pose2d(),
         )
 
         self.field = Field2d()
@@ -119,32 +142,41 @@ class DriveSubsystem(Subsystem):
 
         # --- Vision Setup ---
         self.field_layout = None
-        try:
-            # 1. Connect to the Camera
-            # "Arducam..." must match the Camera Name in the PhotonVision dashboard (http://photonvision.local:5800)
-            self.camera = PhotonCamera("Arducam_OV9281_USB_Camera")
+        if not constants.kTestBench:
+            try:
+                # 1. Connect to the Camera
+                # "Arducam..." must match the Camera Name in the PhotonVision dashboard (http://photonvision.local:5800)
+                self.camera = PhotonCamera("Arducam_OV9281_USB_Camera")
 
-            # 2. Load the Field Map
-            # This loads the official locations of all AprilTags for the current game.
-            self.field_layout = AprilTagFieldLayout.loadField(AprilTagField.k2026RebuiltAndyMark)
+                # 2. Load the Field Map
+                # This loads the official locations of all AprilTags for the current game.
+                self.field_layout = AprilTagFieldLayout.loadField(
+                    AprilTagField.k2026RebuiltAndyMark
+                )
 
-            # 3. Define Camera Position (Crucial!)
-            # We must tell the math exactly where the camera is relative to the center of the robot.
-            # constants.kCameraOffsetX/Y/Z are defined in constants.py
-            robot_to_camera = Transform3d(
-                Translation3d(constants.kCameraOffsetX, constants.kCameraOffsetY, constants.kCameraHeight),
-                Rotation3d(0, constants.kCameraPitch, 0)
-            )
+                # 3. Define Camera Position (Crucial!)
+                # We must tell the math exactly where the camera is relative to the center of the robot.
+                # constants.kCameraOffsetX/Y/Z are defined in constants.py
+                robot_to_camera = Transform3d(
+                    Translation3d(
+                        constants.kCameraOffsetX,
+                        constants.kCameraOffsetY,
+                        constants.kCameraHeight,
+                    ),
+                    Rotation3d(0, constants.kCameraPitch, 0),
+                )
 
-            # 4. Create the Pose Estimator
-            # This tool combines the Camera data + Field Map + Camera Position to calculate "Where am I?"
-            self.photon_estimator = PhotonPoseEstimator(
-                self.field_layout,
-                robot_to_camera
-            )
-        except Exception as e:
-            # If the camera isn't plugged in or PhotonVision isn't running, this prevents the code from crashing.
-            print(f"Vision Init Failed: {e}")
+                # 4. Create the Pose Estimator
+                # This tool combines the Camera data + Field Map + Camera Position to calculate "Where am I?"
+                self.photon_estimator = PhotonPoseEstimator(
+                    self.field_layout, robot_to_camera
+                )
+            except Exception as e:
+                # If the camera isn't plugged in or PhotonVision isn't running, this prevents the code from crashing.
+                print(f"Vision Init Failed: {e}")
+                self.photon_estimator = None
+        else:
+            print("Test Bench Mode: Vision Disabled")
             self.photon_estimator = None
 
         # --- PathPlanner Setup ---
@@ -171,16 +203,17 @@ class DriveSubsystem(Subsystem):
         # Load the robot settings (width, max speed) from the GUI file
         config = RobotConfig.fromGUISettings()
 
-        # Configure the "Ramsete" controller. 
+        # Configure the "Ramsete" controller.
         # Ramsete is a specific math algorithm good for tank-drive robots (like this one).
-        AutoBuilder.configureRamsete(
-            self.getPose,            # "Where am I?" (Function that returns x, y, angle)
-            self.resetOdometry,      # "Start here!" (Function to reset position at start of auto)
-            self.getChassisSpeeds,   # "How fast am I going?" (Current speed)
-            self.driveChassisSpeeds, # "Move!" (Function to set motor speeds)
-            config,                  # The robot settings we loaded above
-            self.shouldFlipPath,     # "Am I on the Red Alliance?" (Flips path if needed)
-            self                     # The subsystem (this file)
+        AutoBuilder.configure(
+            self.getPose,  # Pose supplier
+            self.resetOdometry,  # Pose resetter
+            self.getChassisSpeeds,  # Speed supplier
+            self.driveChassisSpeeds,  # Output function (now takes 2 args)
+            PPLTVController(0.02),  # Use LTV instead of Ramsete (0.02 is loop time)
+            config,  # Robot configuration
+            self.shouldFlipPath,  # Alliance flip supplier
+            self,  # The drive subsystem
         )
 
     def shouldFlipPath(self):
@@ -194,7 +227,7 @@ class DriveSubsystem(Subsystem):
         """
         self.desiredLeftVelocity = 0
         self.desiredRightVelocity = 0
-        
+
         # If we are using the basic DifferentialDrive (no PID), just stop.
         if self.diffDrive:
             self.diffDrive.stopMotor()
@@ -227,7 +260,9 @@ class DriveSubsystem(Subsystem):
                 # If we have a valid estimate, add it to the pose estimator.
                 if est is not None:
                     estimated_pose = est.estimatedPose.toPose2d()
-                    self.poseEstimator.addVisionMeasurement(estimated_pose, est.timestampSeconds)
+                    self.poseEstimator.addVisionMeasurement(
+                        estimated_pose, est.timestampSeconds
+                    )
 
         # Update the pose of the robot (x, y, heading) on the SmartDashboard
         pose = self.getPose()
@@ -243,23 +278,37 @@ class DriveSubsystem(Subsystem):
     def getWheelSpeeds(self):
         """Returns the current wheel speeds of the robot."""
         return DifferentialDriveWheelSpeeds(
-            self.leftEncoder.getVelocity(), self.rightEncoder.getVelocity() * constants.kRightEncoderSign
+            self.leftEncoder.getVelocity(),
+            self.rightEncoder.getVelocity() * constants.kRightEncoderSign,
         )
 
     def getChassisSpeeds(self):
         """Returns the current chassis speeds of the robot."""
         return constants.kDriveKinematics.toChassisSpeeds(self.getWheelSpeeds())
 
-    def driveChassisSpeeds(self, speeds: ChassisSpeeds):
+    def driveChassisSpeeds(self, speeds: ChassisSpeeds, feedforwards):
         """Drives the robot with the given chassis speeds."""
         wheelSpeeds = constants.kDriveKinematics.toWheelSpeeds(speeds)
-        
-        # Convert m/s to RPM to match arcadeDrive's usage of desiredVelocity
-        self.desiredLeftVelocity = wheelSpeeds.left * 60 / (math.pi * constants.kWheelDiameterMeters)
-        self.desiredRightVelocity = wheelSpeeds.right * 60 / (math.pi * constants.kWheelDiameterMeters)
-        
-        self.leftPIDController.setReference(self.desiredLeftVelocity, rev.SparkBase.ControlType.kVelocity)
-        self.rightPIDController.setReference(self.desiredRightVelocity, rev.SparkBase.ControlType.kVelocity)
+
+        self.desiredLeftVelocity = (
+            wheelSpeeds.left * 60 / (math.pi * constants.kWheelDiameterMeters)
+        )
+        self.desiredRightVelocity = (
+            wheelSpeeds.right * 60 / (math.pi * constants.kWheelDiameterMeters)
+        )
+
+        # PathPlanner provides feedforwards in Volts.
+        # SparkMax arbFeedforward expects -1 to 1 (Duty Cycle).
+        # We divide by 12.0 to convert.
+        leftFF = feedforwards.leftFeedforwards / 12.0
+        rightFF = feedforwards.rightFeedforwards / 12.0
+
+        self.leftPIDController.setReference(
+            self.desiredLeftVelocity, rev.SparkBase.ControlType.kVelocity, arbFeedforward=leftFF
+        )
+        self.rightPIDController.setReference(
+            self.desiredRightVelocity, rev.SparkBase.ControlType.kVelocity, arbFeedforward=rightFF
+        )
 
     def resetOdometry(self, pose):
         """Resets the odometry to the specified pose."""
@@ -309,16 +358,22 @@ class DriveSubsystem(Subsystem):
         else:
             # use Rev PID control for better speed and acceleration
             # This tells the SparkMax: "Spin at exactly this RPM, no matter the load."
-            self.leftPIDController.setReference(self.desiredLeftVelocity, rev.SparkBase.ControlType.kVelocity)
-            self.rightPIDController.setReference(self.desiredRightVelocity, rev.SparkBase.ControlType.kVelocity)
+            self.leftPIDController.setReference(
+                self.desiredLeftVelocity, rev.SparkBase.ControlType.kVelocity
+            )
+            self.rightPIDController.setReference(
+                self.desiredRightVelocity, rev.SparkBase.ControlType.kVelocity
+            )
 
     def getAverageEncoderDistance(self):
         """
         Gets the average distance of the two encoders.
         Useful for simple autonomous commands like "Drive forward 2 meters".
         """
-        return (self.leftEncoder.getPosition() * constants.kLeftEncoderSign +
-                self.rightEncoder.getPosition() * constants.kRightEncoderSign) / 2
+        return (
+            self.leftEncoder.getPosition() * constants.kLeftEncoderSign
+            + self.rightEncoder.getPosition() * constants.kRightEncoderSign
+        ) / 2
 
     def setMaxOutput(self, maxOutput):
         """
@@ -333,7 +388,7 @@ class DriveSubsystem(Subsystem):
         Resets the Gyro so the current direction becomes "0 degrees" (Forward).
         Call this at the start of a match!
         """
-        # Since we can't easily reset the remote SenseHat hardware, we just remember 
+        # Since we can't easily reset the remote SenseHat hardware, we just remember
         # the current value and subtract it from future readings.
         self.gyroOffset = self.gyro_yaw_entry.get()
 
@@ -351,7 +406,7 @@ class DriveSubsystem(Subsystem):
 
     def getTurnRate(self):
         """Returns the turn rate of the robot."""
-        return 0.0 # Rate not currently implemented from SenseHat
+        return 0.0  # Rate not currently implemented from SenseHat
 
     def getDistanceToTag(self, tag_id: int) -> float:
         """
@@ -363,7 +418,11 @@ class DriveSubsystem(Subsystem):
             tag_pose = self.field_layout.getTagPose(tag_id)
             if tag_pose is not None:
                 # 2. Calculate distance between Robot (getPose) and Tag
-                return self.getPose().translation().distance(tag_pose.toPose2d().translation())
+                return (
+                    self.getPose()
+                    .translation()
+                    .distance(tag_pose.toPose2d().translation())
+                )
         return -1.0
 
 
@@ -397,10 +456,12 @@ def _getLeadMotorConfig(
 
     # Convert "Rotations" to "Meters"
     config.encoder.positionConversionFactor(positionFactor)
-    #config.encoder.velocityConversionFactor(positionFactor / 60)  # 60 seconds per minute
+    # config.encoder.velocityConversionFactor(positionFactor / 60)  # 60 seconds per minute
 
     # Setup PID (The math that keeps speed constant)
-    config.closedLoop.pid(DrivetrainConstants.initialP, 0.0, DrivetrainConstants.initialD)
+    config.closedLoop.pid(
+        DrivetrainConstants.initialP, 0.0, DrivetrainConstants.initialD
+    )
     config.closedLoop.velocityFF(DrivetrainConstants.initialFF)
     config.closedLoop.outputRange(-1, +1)
     return config
@@ -413,6 +474,7 @@ class BadSimPhysics(object):
     and documented here: https://robotpy.readthedocs.io/projects/pyfrc/en/stable/physics.html
     (but for a swerve drive it will take some work to add correctly)
     """
+
     def __init__(self, drivetrain: DriveSubsystem, robot: RobotBase):
         self.drivetrain = drivetrain
         self.robot = robot
@@ -437,10 +499,13 @@ class BadSimPhysics(object):
 
             # Calculate new pose using Twist2d (kinematics integration)
             from wpimath.geometry import Twist2d
+
             currentPose = drivetrain.getPose()
             twist = Twist2d(speeds.vx * dt, speeds.vy * dt, speeds.omega * dt)
             newPose = currentPose.exp(twist)
 
             # Update the "fake" gyro and force the pose estimator
-            drivetrain.gyro_yaw_entry.set(newPose.rotation().degrees() + drivetrain.gyroOffset)
+            drivetrain.gyro_yaw_entry.set(
+                newPose.rotation().degrees() + drivetrain.gyroOffset
+            )
             drivetrain.resetOdometry(newPose)
