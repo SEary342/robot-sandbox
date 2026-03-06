@@ -99,11 +99,6 @@ class RobotContainer:
             RunCommand(lambda: self.shooter.setTargetRPM(4500), self.shooter)
         )
 
-        # 'X' Button: Toggle Physics Mode
-        self.driverController.x().onTrue(
-            InstantCommand(self.shooter.toggleShooterLogic)
-        )
-
         # 'Y' Button: Stop Shooter
         self.driverController.y().onTrue(
             InstantCommand(self.shooter.stop, self.shooter)
