@@ -20,16 +20,19 @@ from wpimath.kinematics import DifferentialDriveKinematics
 
 # Set to True if testing on a bench without camera/motors to prevent crashes
 kTestBench = False
+# TODO Motor 4 need to reverse for intake
+# TODO Input smoothing
+# TODO Pi distance calculation to target (debug and make sure it?)
 
 # ID for the driver's joystick.
 kDriverControllerPort = 0 # CHECK: Is your controller plugged into port 0 in Driver Station?
 
 # The CAN IDs for the drivetrain motor controllers.
 # CHECK: Use the Rev Hardware Client to verify these IDs match your SparkMaxes.
-kLeftMotor1CAN = 1
+kLeftMotor1CAN = 7
 kLeftMotor2CAN = 2
 kRightMotor1CAN = 3
-kRightMotor2CAN = 4
+kRightMotor2CAN = 5
 
 # Encoders and their respective motor controllers.
 kLeftEncoderSign = +1
@@ -65,7 +68,7 @@ kCameraPitch = math.radians(-30.0)
 # X is forward, Y is left, Z is up.
 
 # Camera 1 Constants (e.g., the left camera)
-kCamera1Name = "Arducam_OV9281_USB_Camera_1" # CHECK: Must match the name in the PhotonVision UI
+kCamera1Name = "Arducam_OV9281_USB_Camera" # CHECK: Must match the name in the PhotonVision UI
 kCamera1OffsetX = 0.2  # meters
 kCamera1OffsetY = 0.1  # meters
 kCamera1Height = 0.5   # meters
@@ -75,7 +78,7 @@ kCamera1Pitch = math.radians(-30.0)
 # kCamera2Name = "Camera_Right", kCamera2OffsetX = 0.2, etc.
 
 # Shooter Constants
-kShooterMotorCAN = 15
+kShooterMotorCAN = 6
 
 # PID Constants
 # TUNE: If the shooter oscillates (shakes) or doesn't reach speed, change these.
