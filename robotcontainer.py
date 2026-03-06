@@ -87,6 +87,28 @@ class RobotContainer:
             )
         )
 
+        # --- Shooter Bindings ---
+
+        # 'A' Button: Manual Shot (Close/Subwoofer) - 3000 RPM
+        self.driverController.a().whileTrue(
+            RunCommand(lambda: self.shooter.setTargetRPM(3000), self.shooter)
+        )
+
+        # 'B' Button: Manual Shot (Far/Podium) - 4500 RPM
+        self.driverController.b().whileTrue(
+            RunCommand(lambda: self.shooter.setTargetRPM(4500), self.shooter)
+        )
+
+        # 'X' Button: Toggle Physics Mode
+        self.driverController.x().onTrue(
+            InstantCommand(self.shooter.toggleShooterLogic)
+        )
+
+        # 'Y' Button: Stop Shooter
+        self.driverController.y().onTrue(
+            InstantCommand(self.shooter.stop, self.shooter)
+        )
+
         # example 4: when Right Bumper is held, spin up shooter based on distance to Tag 7
         # (Tag 7 is Blue Speaker, Tag 4 is Red Speaker)
         self.driverController.rightBumper().whileTrue(
