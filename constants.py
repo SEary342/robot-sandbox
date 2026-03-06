@@ -80,6 +80,14 @@ kCamera1Pitch = math.radians(-30.0)
 # Shooter Constants
 kShooterMotorCAN = 6
 
+# Physics Model Constants
+kGoalHeightMeters = 2.64 
+kShooterHeightMeters = 0.5 
+kShooterAngleDegrees = 45.0 
+kShooterWheelDiameterMeters = 0.1016
+kShooterRecoveryFactor = 2.0 
+kShooterPhysicsTuning = 1.0
+
 # PID Constants
 # TUNE: If the shooter oscillates (shakes) or doesn't reach speed, change these.
 kShooterP = 0.0005
