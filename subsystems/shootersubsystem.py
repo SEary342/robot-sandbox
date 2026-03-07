@@ -43,9 +43,23 @@ class ShooterSubsystem(Subsystem):
         self.shooterMotor = rev.SparkMax(
             constants.kShooterMotorCAN, rev.SparkMax.MotorType.kBrushless
         )
+        self.intakeMotor = rev.SparkMax(
+            constants.kIntakeMotorCAN, rev.SparkMax.MotorType.kBrushless
+        )
 
-        # Configure the motor and PID controller
-        # STUDENTS: This configures the "brain" inside the motor controller to keep speed constant.
+        # --- Configure Intake Motor ---
+        # This is the modern way to configure SparkMax controllers.
+        intake_config = rev.SparkBaseConfig()
+        intake_config.setIdleMode(rev.SparkBaseConfig.IdleMode.kCoast)
+        intake_config.inverted(False)  # Set to True if it runs backwards
+        self.intakeMotor.configure(
+            intake_config,
+            rev.ResetMode.kResetSafeParameters,
+            rev.PersistMode.kPersistParameters,
+        )
+
+        # --- Configure Shooter Motor ---
+        # This configures the "brain" inside the motor controller to keep speed constant.
         config = rev.SparkBaseConfig()
         config.setIdleMode(rev.SparkBaseConfig.IdleMode.kCoast)
         config.closedLoop.pid(
@@ -119,6 +133,18 @@ class ShooterSubsystem(Subsystem):
 
         self.setTargetRPM(target_rpm)
 
+    def runIntake(self):
+        """Runs the intake motor to acquire a note."""
+        self.intakeMotor.set(constants.kIntakeSpeed)
+
+    def runOuttake(self):
+        """Runs the intake motor to feed a note to the shooter."""
+        self.intakeMotor.set(constants.kOuttakeSpeed)
+
+    def stopIntake(self):
+        """Stops only the intake motor."""
+        self.intakeMotor.stopMotor()
+
     def setTargetRPM(self, rpm: float):
         """
         Sets the target RPM directly.
@@ -130,10 +156,11 @@ class ShooterSubsystem(Subsystem):
 
     def stop(self):
         """
-        Stops the shooter motor.
+        Stops the shooter and intake motors.
         """
         self.targetRPM = 0.0
         self.shooterMotor.stopMotor()
+        self.intakeMotor.stopMotor()
 
     def isAtSpeed(self) -> bool:
         """

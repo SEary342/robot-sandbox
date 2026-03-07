@@ -365,6 +365,30 @@ class DriveSubsystem(Subsystem):
                 self.desiredRightVelocity, rev.SparkBase.ControlType.kVelocity
             )
 
+    def tankDrive(self, leftSpeed, rightSpeed, assumeManualInput=False):
+        """Drives the robot using tank controls."""
+
+        if assumeManualInput:
+            # Cubing the input (x^3) makes the joystick less sensitive near the center.
+            leftSpeed = leftSpeed * leftSpeed * leftSpeed
+            rightSpeed = rightSpeed * rightSpeed * rightSpeed
+
+        self.desiredLeftVelocity = leftSpeed * DrivetrainConstants.maxRPM
+        self.desiredRightVelocity = rightSpeed * DrivetrainConstants.maxRPM
+
+        if self.diffDrive:
+            # use basic DifferentialDrive and don't take advantage of low-level Rev PID controller
+            self.diffDrive.tankDrive(leftSpeed, rightSpeed, squareInputs=False)
+        else:
+            # use Rev PID control for better speed and acceleration
+            # This tells the SparkMax: "Spin at exactly this RPM, no matter the load."
+            self.leftPIDController.setReference(
+                self.desiredLeftVelocity, rev.SparkBase.ControlType.kVelocity
+            )
+            self.rightPIDController.setReference(
+                self.desiredRightVelocity, rev.SparkBase.ControlType.kVelocity
+            )
+
     def getAverageEncoderDistance(self):
         """
         Gets the average distance of the two encoders.
@@ -424,6 +448,24 @@ class DriveSubsystem(Subsystem):
                     .distance(tag_pose.toPose2d().translation())
                 )
         return -1.0
+
+    def getDistanceToClosestTagInList(self, tag_ids: tuple[int, ...]) -> float:
+        """
+        Calculates the straight-line distance to the closest AprilTag from a given list.
+
+        :param tag_ids: A tuple of AprilTag IDs to search for.
+        :returns: The distance to the closest tag, or -1.0 if no tags from the list are visible.
+        """
+        min_dist = float("inf")
+        found_tag = False
+
+        for tag_id in tag_ids:
+            dist = self.getDistanceToTag(tag_id)
+            if 0 < dist < min_dist:
+                min_dist = dist
+                found_tag = True
+
+        return min_dist if found_tag else -1.0
 
 
 def _getFollowMotorConfig(leadCanID, inverted):

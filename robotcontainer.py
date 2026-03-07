@@ -36,6 +36,7 @@ class RobotContainer:
         self.robotDrive = DriveSubsystem()
         self.shooter = ShooterSubsystem()
 
+        self.is_tank_drive = False
         # The driver's controller.
         self.driverController = CommandXboxController(constants.kDriverControllerPort)
 
@@ -46,12 +47,21 @@ class RobotContainer:
 
         # Configure default subsystems
         # Set the default drive command to split-stick arcade drive
-        # This runs whenever no other drive command is happening.
+        # This runs whenever no other drive command is happening and can be toggled
+        # between arcade and tank drive using the 'B' button.
         self.robotDrive.setDefaultCommand(RunCommand(
-            lambda: self.robotDrive.arcadeDrive(
-                -self.driverController.getRawAxis(XboxController.Axis.kLeftY),
-                -self.driverController.getRawAxis(XboxController.Axis.kLeftX),
-                assumeManualInput=True
+            lambda: (
+                self.robotDrive.tankDrive(
+                    -self.driverController.getRawAxis(XboxController.Axis.kLeftY),
+                    -self.driverController.getRawAxis(XboxController.Axis.kRightY),
+                    assumeManualInput=True,
+                )
+                if self.is_tank_drive
+                else self.robotDrive.arcadeDrive(
+                    -self.driverController.getRawAxis(XboxController.Axis.kLeftY),
+                    -self.driverController.getRawAxis(XboxController.Axis.kLeftX),
+                    assumeManualInput=True,
+                )
             ),
             self.robotDrive
         ))
@@ -62,6 +72,11 @@ class RobotContainer:
         if commands2.TimedCommandRobot.isSimulation():
             self.robotDrive.simPhysics = BadSimPhysics(self.robotDrive, robot)
 
+    def toggle_drive_mode(self):
+        """Toggles between arcade and tank drive modes."""
+        self.is_tank_drive = not self.is_tank_drive
+        wpilib.SmartDashboard.putBoolean("Tank Drive Active", self.is_tank_drive)
+
     def configureButtonBindings(self):
         """
         Use this method to define your button->command mappings. Buttons can be created by
@@ -71,7 +86,17 @@ class RobotContainer:
         STUDENTS: This is where you tell the robot what buttons do what!
         """
 
-        # example 2: when "POV-up" button pressed, reset robot field position to "facing North"
+        # 'A' button: Toggles the shooter logic between physics and interpolation table.
+        self.driverController.a().onTrue(
+            InstantCommand(self.shooter.toggleShooterLogic, self.shooter)
+        )
+
+        # 'B' button: Toggles the drive mode between arcade and tank drive.
+        self.driverController.b().onTrue(
+            InstantCommand(self.toggle_drive_mode)
+        )
+
+        # POV Up: Reset odometry to a known starting position (e.g., Blue Alliance)
         self.driverController.povUp().onTrue(
             InstantCommand(
                 lambda: self.robotDrive.resetOdometry(Pose2d(1.0, 4.0, Rotation2d.fromDegrees(0))),
@@ -79,22 +104,47 @@ class RobotContainer:
             )
         )
 
-        # example 3: when "POV-down" is pressed, reset robot field position to "facing South"
+        # POV Down: Reset odometry to a known starting position (e.g., Red Alliance)
         self.driverController.povDown().onTrue(
             InstantCommand(
                 lambda: self.robotDrive.resetOdometry(Pose2d(7.0, 4.0, Rotation2d.fromDegrees(180))),
                 self.robotDrive
             )
         )
+        
+        # --- Shooting and Intake Logic ---
 
-        # example 4: when Right Bumper is held, spin up shooter based on distance to Tag 7
-        # (Tag 7 is Blue Speaker, Tag 4 is Red Speaker)
-        self.driverController.rightBumper().whileTrue(
+        def shoot_sequence():
+            """A helper function to contain the logic for shooting."""
+            # 1. Determine which speaker tags to use based on alliance
+            alliance = wpilib.DriverStation.getAlliance()
+            target_tags = (
+                constants.blueTargets
+                if alliance == wpilib.DriverStation.Alliance.kBlue
+                else constants.redTargets
+            )
+            distance = self.robotDrive.getDistanceToClosestTagInList(target_tags)
+
+            # 2. Set the shooter speed based on the calculated distance
+            self.shooter.setSpeedFromDistance(distance)
+
+            # 3. Only run the feeder motor if the flywheel is at the target speed
+            if self.shooter.isAtSpeed():
+                self.shooter.runOuttake()
+            else:
+                self.shooter.stopIntake()
+
+        # Right Bumper: Aim and shoot. This has priority over intake.
+        self.driverController.rightBumper().whileTrue(RunCommand(shoot_sequence, self.shooter))
+
+        # Left Bumper: Run intake, but only if the right bumper (shoot) is not held.
+        (self.driverController.leftBumper().and_(self.driverController.rightBumper().not_())).whileTrue(
             RunCommand(
-                lambda: self.shooter.setSpeedFromDistance(
-                    self.robotDrive.getDistanceToTag(7)
+                lambda: (
+                    self.shooter.setTargetRPM(constants.kShooterIntakeRPM),
+                    self.shooter.runIntake(),
                 ),
-                self.shooter
+                self.shooter,
             )
         )
 

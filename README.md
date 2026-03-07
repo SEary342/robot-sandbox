@@ -41,6 +41,25 @@ This robot uses a Raspberry Pi with a SenseHat for its Gyroscope.
 
 ---
 
+## 🎮 Controls
+
+### Driver Controller (Xbox)
+*   **Left Stick Y**: Drive Forward/Backward (Arcade Mode) or Left Wheels (Tank Mode).
+*   **Left Stick X**: Turn Left/Right (Arcade Mode).
+*   **Right Stick Y**: Right Wheels (Tank Mode).
+*   **Button 'B'**: Toggle Drive Mode (Arcade vs. Tank).
+*   **Button 'A'**: Toggle Shooter Calculation (Physics vs. Lookup Table).
+*   **Right Bumper (Hold)**: **Shoot**.
+    *   Automatically aims shooter speed based on distance to the Speaker.
+    *   Feeds the note only when the flywheel is at the correct speed.
+*   **Left Bumper (Hold)**: **Intake**.
+    *   Runs the intake rollers and spins the flywheel slowly.
+    *   *Note: Shooting (Right Bumper) overrides Intaking.*
+*   **D-Pad Up**: Reset Robot Position to **Blue Alliance** start.
+*   **D-Pad Down**: Reset Robot Position to **Red Alliance** start.
+
+---
+
 ## 💡 Tips for Coding
 *   **Read the Comments**: We've added notes in the code to explain what complex lines do.
 *   **One thing at a time**: Test the drivetrain first. Then test the shooter. Don't try to do everything at once!

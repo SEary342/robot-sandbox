@@ -20,12 +20,13 @@ from wpimath.kinematics import DifferentialDriveKinematics
 
 # Set to True if testing on a bench without camera/motors to prevent crashes
 kTestBench = False
-# TODO Motor 4 need to reverse for intake
 # TODO Input smoothing
 # TODO Pi distance calculation to target (debug and make sure it?)
 
 # ID for the driver's joystick.
-kDriverControllerPort = 0 # CHECK: Is your controller plugged into port 0 in Driver Station?
+kDriverControllerPort = (
+    0  # CHECK: Is your controller plugged into port 0 in Driver Station?
+)
 
 # The CAN IDs for the drivetrain motor controllers.
 # CHECK: Use the Rev Hardware Client to verify these IDs match your SparkMaxes.
@@ -53,10 +54,12 @@ kWheelDiameterMeters = 0.15
 kEncoderPositionConversionFactor = 0.7
 
 # Gyro config
-kGyroReversed = -1   # make this +1 if not inverted
+kGyroReversed = -1  # make this +1 if not inverted
+
 
 class AutoConstants:
     kUseSqrtControl = True  # compatibility with commands from https://github.com/epanov1602/CommandRevSwerve/blob/main/docs/Command_Driving_Aiming.md
+
 
 # Camera Constants
 kCameraOffsetX = 0.2
@@ -68,10 +71,12 @@ kCameraPitch = math.radians(-30.0)
 # X is forward, Y is left, Z is up.
 
 # Camera 1 Constants (e.g., the left camera)
-kCamera1Name = "Arducam_OV9281_USB_Camera" # CHECK: Must match the name in the PhotonVision UI
+kCamera1Name = (
+    "Arducam_OV9281_USB_Camera"  # CHECK: Must match the name in the PhotonVision UI
+)
 kCamera1OffsetX = 0.2  # meters
 kCamera1OffsetY = 0.1  # meters
-kCamera1Height = 0.5   # meters
+kCamera1Height = 0.5  # meters
 kCamera1Pitch = math.radians(-30.0)
 
 # Add more cameras by copying the block above and changing the numbers!
@@ -79,13 +84,19 @@ kCamera1Pitch = math.radians(-30.0)
 
 # Shooter Constants
 kShooterMotorCAN = 6
+kIntakeMotorCAN = 4  # New motor for intake/feeding
+
+# Speeds for the intake motor (+ is in, - is out to shooter)
+kIntakeSpeed = 0.7
+kOuttakeSpeed = -0.5
+
 
 # Physics Model Constants
-kGoalHeightMeters = 2.64 
-kShooterHeightMeters = 0.5 
-kShooterAngleDegrees = 45.0 
+kGoalHeightMeters = 2.64
+kShooterHeightMeters = 0.5
+kShooterAngleDegrees = 45.0
 kShooterWheelDiameterMeters = 0.1016
-kShooterRecoveryFactor = 2.0 
+kShooterRecoveryFactor = 2.0
 kShooterPhysicsTuning = 1.0
 
 # PID Constants
@@ -98,6 +109,7 @@ kShooterMaxOutput = 1.0
 kShooterMinOutput = -1.0
 
 kShooterMaxRPM = 5700
+kShooterIntakeRPM = 3000  # RPM for when we are intaking
 kShooterToleranceRPM = 50
 kShooterMinRange = 1.0
 kShooterMaxRange = 6.5
@@ -110,5 +122,8 @@ kShooterDistanceToRPM = {
     3.0: 3500,
     4.0: 4200,
     5.0: 4800,
-    6.0: 5500
+    6.0: 5500,
 }
+
+redTargets = (9, 10)
+blueTargets = (25, 26)
