@@ -49,6 +49,8 @@ This robot uses a Raspberry Pi with a SenseHat for its Gyroscope.
 *   **Right Stick Y**: Right Wheels (Tank Mode).
 *   **Button 'B'**: Toggle Drive Mode (Arcade vs. Tank).
 *   **Button 'A'**: Toggle Shooter Calculation (Physics vs. Lookup Table).
+*   **Button 'Y' (Hold)**: **Manual RPM Tuning**.
+    *   Spins the shooter to the RPM value set in the "Shooter/TuningRPM" field on the SmartDashboard.
 *   **Right Bumper (Hold)**: **Shoot**.
     *   Automatically aims shooter speed based on distance to the Speaker.
     *   Feeds the note only when the flywheel is at the correct speed.
@@ -57,6 +59,25 @@ This robot uses a Raspberry Pi with a SenseHat for its Gyroscope.
     *   *Note: Shooting (Right Bumper) overrides Intaking.*
 *   **D-Pad Up**: Reset Robot Position to **Blue Alliance** start.
 *   **D-Pad Down**: Reset Robot Position to **Red Alliance** start.
+
+---
+
+## 🔧 How to Calibrate the Shooter
+
+The robot can use a lookup table (`kShooterDistanceToRPM` in `constants.py`) to quickly set the shooter speed based on distance. To get accurate values for this table, you need to calibrate.
+
+1.  Place the robot at a known distance from the target (e.g., 2.0 meters).
+2.  Open the **SmartDashboard** on the driver station laptop.
+3.  Find the text box labeled **"Shooter/TuningRPM"**.
+4.  Enter a starting RPM (e.g., 2800).
+5.  Press and hold the **'Y' button** on the controller. The shooter will spin up to the target RPM.
+6.  Once the "Shooter/AtSpeed" indicator is true, press the **Right Bumper** to shoot a note.
+7.  Observe the shot. If it's too high, lower the RPM in the dashboard. If it's too low, increase it.
+8.  Repeat steps 5-7 until you find the perfect RPM for that distance.
+9.  Open `constants.py` and update the `kShooterDistanceToRPM` dictionary with your new value (e.g., `2.0: 2850`).
+10. Repeat the entire process for several different distances to build out the table.
+
+This process will give you a highly accurate `kShooterDistanceToRPM` map and make your automated shooting much more reliable.
 
 ---
 

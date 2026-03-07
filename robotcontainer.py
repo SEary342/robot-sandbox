@@ -40,6 +40,9 @@ class RobotContainer:
         # The driver's controller.
         self.driverController = CommandXboxController(constants.kDriverControllerPort)
 
+        # Put a number box on the dashboard for shooter tuning
+        wpilib.SmartDashboard.putNumber("Shooter/TuningRPM", 3000)
+
         # --- 2. Configure Controls (Buttons) ---
         # Configure the button bindings
         self.configureButtonBindings()
@@ -94,6 +97,20 @@ class RobotContainer:
         # 'B' button: Toggles the drive mode between arcade and tank drive.
         self.driverController.b().onTrue(
             InstantCommand(self.toggle_drive_mode)
+        )
+
+        # 'Y' button: Manual RPM tuning mode.
+        # Allows you to set a target RPM on the SmartDashboard and spin the shooter to it.
+        self.driverController.y().whileTrue(
+            RunCommand(
+                lambda: (
+                    self.shooter.setTargetRPM(
+                        wpilib.SmartDashboard.getNumber("Shooter/TuningRPM", 0)
+                    ),
+                    self.shooter.runOuttake(),
+                ),
+                self.shooter,
+            )
         )
 
         # POV Up: Reset odometry to a known starting position (e.g., Blue Alliance)
