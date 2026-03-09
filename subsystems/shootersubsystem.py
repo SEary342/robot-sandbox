@@ -166,7 +166,7 @@ class ShooterSubsystem(Subsystem):
         """
         Returns true if the shooter is at the target speed within tolerance.
         """
-        return (
+        return not constants.kCamConfigured or (
             abs(self.encoder.getVelocity() - self.targetRPM)
             <= constants.kShooterToleranceRPM
         )

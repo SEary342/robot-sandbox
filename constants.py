@@ -20,6 +20,9 @@ from wpimath.kinematics import DifferentialDriveKinematics
 
 # Set to True if testing on a bench without camera/motors to prevent crashes
 kTestBench = False
+kCamConfigured = (
+    False  # Determines if we are using the camera or just turning on the lauchner.
+)
 # TODO Input smoothing
 # TODO Pi distance calculation to target (debug and make sure it?)
 
@@ -86,9 +89,8 @@ kCamera1Pitch = math.radians(-30.0)
 kShooterMotorCAN = 6
 kIntakeMotorCAN = 4  # New motor for intake/feeding
 
-# Speeds for the intake motor (+ is in, - is out to shooter)
-kIntakeSpeed = 0.7
-kOuttakeSpeed = -0.5
+kIntakeSpeed = -0.5  # Negative speed pulls the ball IN
+kOuttakeSpeed = 0.7  # Positive speed pushes the ball OUT to the shooter
 
 
 # Physics Model Constants

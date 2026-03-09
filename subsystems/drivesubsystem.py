@@ -475,6 +475,8 @@ def _getFollowMotorConfig(leadCanID, inverted):
     """
     config = rev.SparkBaseConfig()
     config.follow(leadCanID, inverted)
+
+    config.smartCurrentLimit(40)
     return config
 
 
@@ -488,6 +490,8 @@ def _getLeadMotorConfig(
     """
     config = rev.SparkBaseConfig()
     config.inverted(inverted)
+
+    config.smartCurrentLimit(40)
 
     # Brake mode: The robot stops quickly when you let go of the stick.
     config.setIdleMode(rev.SparkBaseConfig.IdleMode.kBrake)
