@@ -51,7 +51,10 @@ class ShooterSubsystem(Subsystem):
         # This is the modern way to configure SparkMax controllers.
         intake_config = rev.SparkBaseConfig()
         intake_config.setIdleMode(rev.SparkBaseConfig.IdleMode.kCoast)
-        intake_config.inverted(False)  # Set to True if it runs backwards
+        intake_config.smartCurrentLimit(
+            constants.kLaunchMotorCurrentLimit
+        )  # Limit current to protect the motor
+        intake_config.inverted(True)  # Set to True if it runs backwards
         self.intakeMotor.configure(
             intake_config,
             rev.ResetMode.kResetSafeParameters,
@@ -62,6 +65,7 @@ class ShooterSubsystem(Subsystem):
         # This configures the "brain" inside the motor controller to keep speed constant.
         config = rev.SparkBaseConfig()
         config.setIdleMode(rev.SparkBaseConfig.IdleMode.kCoast)
+        config.smartCurrentLimit(constants.kLaunchMotorCurrentLimit)
         config.closedLoop.pid(
             constants.kShooterP, constants.kShooterI, constants.kShooterD
         )

@@ -61,27 +61,43 @@ class DriveSubsystem(Subsystem):
             # In test bench mode, we only initialize the motors we expect to be connected
             # to prevent CAN timeout errors. Here, we assume motors with CAN IDs
             # kLeftMotor1CAN (1) and kLeftMotor2CAN (2) are present.
-            self.motorL1 = rev.SparkMax(constants.kLeftMotor1CAN, rev.SparkMax.MotorType.kBrushless)
+            self.motorL1 = rev.SparkMax(
+                constants.kLeftMotor1CAN, rev.SparkMax.MotorType.kBrushless
+            )
             self.motorL2 = None
             # We'll use the motor with ID 2 as our "right" motor on the bench.
-            self.motorR1 = rev.SparkMax(constants.kLeftMotor2CAN, rev.SparkMax.MotorType.kBrushless)
+            self.motorR1 = rev.SparkMax(
+                constants.kLeftMotor2CAN, rev.SparkMax.MotorType.kBrushless
+            )
             self.motorR2 = None
         else:
             # In normal robot mode, initialize all four motors from constants.
-            self.motorL1 = rev.SparkMax(constants.kLeftMotor1CAN, rev.SparkMax.MotorType.kBrushless)
-            self.motorL2 = rev.SparkMax(constants.kLeftMotor2CAN, rev.SparkMax.MotorType.kBrushless)
-            self.motorR1 = rev.SparkMax(constants.kRightMotor1CAN, rev.SparkMax.MotorType.kBrushless)
-            self.motorR2 = rev.SparkMax(constants.kRightMotor2CAN, rev.SparkMax.MotorType.kBrushless)
+            self.motorL1 = rev.SparkMax(
+                constants.kLeftMotor1CAN, rev.SparkMax.MotorType.kBrushless
+            )
+            self.motorL2 = rev.SparkMax(
+                constants.kLeftMotor2CAN, rev.SparkMax.MotorType.kBrushless
+            )
+            self.motorR1 = rev.SparkMax(
+                constants.kRightMotor1CAN, rev.SparkMax.MotorType.kBrushless
+            )
+            self.motorR2 = rev.SparkMax(
+                constants.kRightMotor2CAN, rev.SparkMax.MotorType.kBrushless
+            )
 
         # --- Motor Configuration ---
         # Configure the "lead" motors. These are the ones with encoders.
         self.motorL1.configure(
-            _getLeadMotorConfig(l1MotorInverted, constants.kEncoderPositionConversionFactor),
+            _getLeadMotorConfig(
+                l1MotorInverted, constants.kEncoderPositionConversionFactor
+            ),
             ResetMode.kResetSafeParameters,
             PersistMode.kPersistParameters,
         )
         self.motorR1.configure(
-            _getLeadMotorConfig(r1MotorInverted, constants.kEncoderPositionConversionFactor),
+            _getLeadMotorConfig(
+                r1MotorInverted, constants.kEncoderPositionConversionFactor
+            ),
             ResetMode.kResetSafeParameters,
             PersistMode.kPersistParameters,
         )
@@ -89,13 +105,17 @@ class DriveSubsystem(Subsystem):
         # Configure the "follower" motors, but only if they were initialized (not in test bench mode).
         if self.motorL2:
             self.motorL2.configure(
-                _getFollowMotorConfig(constants.kLeftMotor1CAN, l2MotorInverted != l1MotorInverted),
+                _getFollowMotorConfig(
+                    constants.kLeftMotor1CAN, l2MotorInverted != l1MotorInverted
+                ),
                 ResetMode.kResetSafeParameters,
                 PersistMode.kPersistParameters,
             )
         if self.motorR2:
             self.motorR2.configure(
-                _getFollowMotorConfig(constants.kRightMotor1CAN, r2MotorInverted != r1MotorInverted),
+                _getFollowMotorConfig(
+                    constants.kRightMotor1CAN, r2MotorInverted != r1MotorInverted
+                ),
                 ResetMode.kResetSafeParameters,
                 PersistMode.kPersistParameters,
             )
@@ -111,8 +131,12 @@ class DriveSubsystem(Subsystem):
             # Use the basic WPILib DifferentialDrive. This is simpler but less precise.
             # Create MotorControllerGroups. If a follower motor is None (in test bench mode),
             # the group will just contain the lead motor.
-            self.leftMotors = MotorControllerGroup(*[m for m in [self.motorL1, self.motorL2] if m])
-            self.rightMotors = MotorControllerGroup(*[m for m in [self.motorR1, self.motorR2] if m])
+            self.leftMotors = MotorControllerGroup(
+                *[m for m in [self.motorL1, self.motorL2] if m]
+            )
+            self.rightMotors = MotorControllerGroup(
+                *[m for m in [self.motorR1, self.motorR2] if m]
+            )
             self.rightMotors.setInverted(True)
             self.diffDrive = DifferentialDrive(self.leftMotors, self.rightMotors)
 
@@ -146,7 +170,7 @@ class DriveSubsystem(Subsystem):
             try:
                 # 1. Connect to the Camera
                 # "Arducam..." must match the Camera Name in the PhotonVision dashboard (http://photonvision.local:5800)
-                self.camera = PhotonCamera("Arducam_OV9281_USB_Camera")
+                self.camera = PhotonCamera(constants.kCamera1Name)
 
                 # 2. Load the Field Map
                 # This loads the official locations of all AprilTags for the current game.
@@ -304,10 +328,14 @@ class DriveSubsystem(Subsystem):
         rightFF = feedforwards.rightFeedforwards / 12.0
 
         self.leftPIDController.setReference(
-            self.desiredLeftVelocity, rev.SparkBase.ControlType.kVelocity, arbFeedforward=leftFF
+            self.desiredLeftVelocity,
+            rev.SparkBase.ControlType.kVelocity,
+            arbFeedforward=leftFF,
         )
         self.rightPIDController.setReference(
-            self.desiredRightVelocity, rev.SparkBase.ControlType.kVelocity, arbFeedforward=rightFF
+            self.desiredRightVelocity,
+            rev.SparkBase.ControlType.kVelocity,
+            arbFeedforward=rightFF,
         )
 
     def resetOdometry(self, pose):
@@ -476,7 +504,7 @@ def _getFollowMotorConfig(leadCanID, inverted):
     config = rev.SparkBaseConfig()
     config.follow(leadCanID, inverted)
 
-    config.smartCurrentLimit(40)
+    config.smartCurrentLimit(constants.kDriveMotorCurrentLimit)
     return config
 
 
@@ -491,7 +519,7 @@ def _getLeadMotorConfig(
     config = rev.SparkBaseConfig()
     config.inverted(inverted)
 
-    config.smartCurrentLimit(40)
+    config.smartCurrentLimit(constants.kDriveMotorCurrentLimit)
 
     # Brake mode: The robot stops quickly when you let go of the stick.
     config.setIdleMode(rev.SparkBaseConfig.IdleMode.kBrake)

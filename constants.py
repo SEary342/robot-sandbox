@@ -23,6 +23,8 @@ kTestBench = False
 kCamConfigured = (
     False  # Determines if we are using the camera or just turning on the lauchner.
 )
+kLaunchMotorCurrentLimit = 20  # Amps, to protect the motor and battery when testing without a camera. Adjust as needed.
+kDriveMotorCurrentLimit = 20  # Amps, to protect the motors and battery. Adjust as needed.
 # TODO Input smoothing
 # TODO Pi distance calculation to target (debug and make sure it?)
 
@@ -89,8 +91,8 @@ kCamera1Pitch = math.radians(-30.0)
 kShooterMotorCAN = 6
 kIntakeMotorCAN = 4  # New motor for intake/feeding
 
-kIntakeSpeed = -0.5  # Negative speed pulls the ball IN
-kOuttakeSpeed = 0.7  # Positive speed pushes the ball OUT to the shooter
+kIntakeSpeed = -1  # Negative speed pulls the ball IN
+kOuttakeSpeed = 0.5  # Positive speed pushes the ball OUT to the shooter
 
 
 # Physics Model Constants
@@ -111,7 +113,7 @@ kShooterMaxOutput = 1.0
 kShooterMinOutput = -1.0
 
 kShooterMaxRPM = 5700
-kShooterIntakeRPM = 3000  # RPM for when we are intaking
+kShooterIntakeRPM = 1000  # RPM for when we are intaking
 kShooterToleranceRPM = 50
 kShooterMinRange = 1.0
 kShooterMaxRange = 6.5
