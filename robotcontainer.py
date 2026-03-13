@@ -18,6 +18,10 @@ import commands2
 from pathplannerlib.auto import AutoBuilder
 from subsystems.drivesubsystem import DriveSubsystem, BadSimPhysics
 from subsystems.shootersubsystem import ShooterSubsystem
+try:
+    from subsystems.swervesubsystem import SwerveSubsystem
+except ImportError:
+    SwerveSubsystem = None  # type: ignore
 
 import constants
 
@@ -33,7 +37,15 @@ class RobotContainer:
     def __init__(self, robot):
         # --- 1. Setup Subsystems (The Robot's Body Parts) ---
         # The robot's subsystems
-        self.robotDrive = DriveSubsystem()
+        self.kUseSwerve = False  # Toggle this to switch between Tank and Swerve
+
+        if self.kUseSwerve and SwerveSubsystem is not None:
+            self.robotDrive = SwerveSubsystem()
+        elif self.kUseSwerve and SwerveSubsystem is None:
+            raise ImportError("kUseSwerve is True, but SwerveSubsystem could not be imported.")
+        else:
+            self.robotDrive = DriveSubsystem()
+
         self.shooter = ShooterSubsystem()
 
         self.is_tank_drive = False
@@ -52,28 +64,41 @@ class RobotContainer:
         # Set the default drive command to split-stick arcade drive
         # This runs whenever no other drive command is happening and can be toggled
         # between arcade and tank drive using the 'B' button.
-        self.robotDrive.setDefaultCommand(RunCommand(
-            lambda: (
-                self.robotDrive.tankDrive(
-                    -self.driverController.getRawAxis(XboxController.Axis.kLeftY),
-                    -self.driverController.getRawAxis(XboxController.Axis.kRightY),
-                    assumeManualInput=True,
-                )
-                if self.is_tank_drive
-                else self.robotDrive.arcadeDrive(
-                    -self.driverController.getRawAxis(XboxController.Axis.kLeftY),
-                    -self.driverController.getRawAxis(XboxController.Axis.kLeftX),
-                    assumeManualInput=True,
-                )
-            ),
-            self.robotDrive
-        ))
+        if self.kUseSwerve:
+            self.robotDrive.setDefaultCommand(RunCommand(
+                lambda: self.robotDrive.drive(
+                    -self.driverController.getLeftY(),
+                    -self.driverController.getLeftX(),
+                    -self.driverController.getRightX(),
+                    True,  # Field Relative
+                    True,  # Rate Limit
+                ),
+                self.robotDrive
+            ))
+        else:
+            self.robotDrive.setDefaultCommand(RunCommand(
+                lambda: (
+                    self.robotDrive.tankDrive(
+                        -self.driverController.getRawAxis(XboxController.Axis.kLeftY),
+                        -self.driverController.getRawAxis(XboxController.Axis.kRightY),
+                        assumeManualInput=True,
+                    )
+                    if self.is_tank_drive
+                    else self.robotDrive.arcadeDrive(
+                        -self.driverController.getRawAxis(XboxController.Axis.kLeftY),
+                        -self.driverController.getRawAxis(XboxController.Axis.kLeftX),
+                        assumeManualInput=True,
+                    )
+                ),
+                self.robotDrive
+            ))
 
         # Default command for shooter is to stop (coast)
         self.shooter.setDefaultCommand(RunCommand(self.shooter.stop, self.shooter))
 
         if commands2.TimedCommandRobot.isSimulation():
-            self.robotDrive.simPhysics = BadSimPhysics(self.robotDrive, robot)
+            if not self.kUseSwerve:
+                self.robotDrive.simPhysics = BadSimPhysics(self.robotDrive, robot)
 
     def toggle_drive_mode(self):
         """Toggles between arcade and tank drive modes."""
@@ -95,9 +120,10 @@ class RobotContainer:
         )
 
         # 'B' button: Toggles the drive mode between arcade and tank drive.
-        self.driverController.b().onTrue(
-            InstantCommand(self.toggle_drive_mode)
-        )
+        if not self.kUseSwerve:
+            self.driverController.b().onTrue(
+                InstantCommand(self.toggle_drive_mode)
+            )
 
         # 'Y' button: Manual RPM tuning mode.
         # Allows you to set a target RPM on the SmartDashboard and spin the shooter to it.
