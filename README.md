@@ -47,7 +47,7 @@ This robot uses a Raspberry Pi with a SenseHat for its Gyroscope.
 *   **Left Stick Y**: Drive Forward/Backward (Arcade Mode) or Left Wheels (Tank Mode).
 *   **Left Stick X**: Turn Left/Right (Arcade Mode).
 *   **Right Stick Y**: Right Wheels (Tank Mode).
-*   **Button 'B'**: Toggle Drive Mode (Arcade vs. Tank).
+*   **Button 'B'**: Toggle Drive Mode (Arcade vs. Tank). Swerve zeros the Gyro
 *   **Button 'A'**: Toggle Shooter Calculation (Physics vs. Lookup Table).
 *   **Button 'Y' (Hold)**: **Manual RPM Tuning**.
     *   Spins the shooter to the RPM value set in the "Shooter/TuningRPM" field on the SmartDashboard.

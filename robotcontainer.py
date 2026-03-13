@@ -119,10 +119,15 @@ class RobotContainer:
             InstantCommand(self.shooter.toggleShooterLogic, self.shooter)
         )
 
-        # 'B' button: Toggles the drive mode between arcade and tank drive.
+        # 'B' button: Toggles drive mode (tank) or zeros the gyro (swerve).
         if not self.kUseSwerve:
             self.driverController.b().onTrue(
                 InstantCommand(self.toggle_drive_mode)
+            )
+        else:
+            # In swerve mode, 'B' button zeros the gyro
+            self.driverController.b().onTrue(
+                InstantCommand(self.robotDrive.zeroHeading, self.robotDrive)
             )
 
         # 'Y' button: Manual RPM tuning mode.
