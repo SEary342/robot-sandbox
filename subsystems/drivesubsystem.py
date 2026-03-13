@@ -537,7 +537,7 @@ def _getLeadMotorConfig(
     config.smartCurrentLimit(constants.kDriveMotorCurrentLimit)
 
     # Brake mode: The robot stops quickly when you let go of the stick.
-    config.setIdleMode(rev.SparkBaseConfig.IdleMode.kBrake)
+    config.setIdleMode(rev.SparkBaseConfig.IdleMode.kCoast)
 
     # Disable limit switches (we don't use them on wheels)
     config.limitSwitch.forwardLimitSwitchEnabled(False)

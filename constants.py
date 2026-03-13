@@ -25,7 +25,7 @@ kCamConfigured = (
 )
 kLaunchMotorCurrentLimit = 40  # Amps, to protect the motor and battery when testing without a camera. Adjust as needed.
 kDriveMotorCurrentLimit = 40  # Amps, to protect the motors and battery. Adjust as needed.
-kInputSlewRate = 3.0  # Slew rate limit (units/sec). 3.0 means it takes 0.33s to go from 0 to 1.
+kInputSlewRate = 2.0  # Slew rate limit (units/sec). 3.0 means it takes 0.33s to go from 0 to 1.
 # TODO Pi distance calculation to target (debug and make sure it?)
 
 # ID for the driver's joystick.
