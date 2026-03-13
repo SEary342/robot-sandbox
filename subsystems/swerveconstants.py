@@ -34,14 +34,14 @@ class SwerveConstants:
 
     # --- Motor CAN IDs ---
     # It's a good idea to label your controllers with these IDs.
-    kFrontLeftDrivingCanId = 10
-    kFrontLeftTurningCanId = 11
-    kRearLeftDrivingCanId = 12
-    kRearLeftTurningCanId = 13
-    kFrontRightDrivingCanId = 14
-    kFrontRightTurningCanId = 15
-    kRearRightDrivingCanId = 16
-    kRearRightTurningCanId = 17
+    kFrontLeftDrivingCanId = 7
+    kFrontLeftTurningCanId = 8
+    kRearLeftDrivingCanId = 6
+    kRearLeftTurningCanId = 5
+    kFrontRightDrivingCanId = 3
+    kFrontRightTurningCanId = 4
+    kRearRightDrivingCanId = 2
+    kRearRightTurningCanId = 1
 
     # --- Physical Properties ---
     # You specified 3-inch wheels.
