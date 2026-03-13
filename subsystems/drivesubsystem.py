@@ -16,6 +16,7 @@ from wpilib import SmartDashboard, Field2d, RobotBase, Timer
 from wpimath.kinematics import DifferentialDriveWheelSpeeds, ChassisSpeeds
 from wpimath.geometry import Rotation2d, Pose2d, Transform3d, Translation3d, Rotation3d
 from wpimath.estimator import DifferentialDrivePoseEstimator
+from wpimath.filter import SlewRateLimiter
 
 from photonlibpy.photonCamera import PhotonCamera
 from photonlibpy.photonPoseEstimator import PhotonPoseEstimator
@@ -145,6 +146,12 @@ class DriveSubsystem(Subsystem):
 
         # The right-side drive encoder
         self.rightEncoder = self.motorR1.getEncoder()
+
+        # --- Input Smoothing ---
+        self.filterFwd = SlewRateLimiter(constants.kInputSlewRate)
+        self.filterRot = SlewRateLimiter(constants.kInputSlewRate)
+        self.filterLeft = SlewRateLimiter(constants.kInputSlewRate)
+        self.filterRight = SlewRateLimiter(constants.kInputSlewRate)
 
         # --- Gyro Setup (SenseHat via NetworkTables) ---
         self.inst = ntcore.NetworkTableInstance.getDefault()
@@ -359,6 +366,10 @@ class DriveSubsystem(Subsystem):
             # This helps the driver make small adjustments without jerking the robot.
             fwd = fwd * fwd * fwd
             rot = rot * abs(rot)
+            
+            # Apply slew rate limiting to smooth acceleration
+            fwd = self.filterFwd.calculate(fwd)
+            rot = self.filterRot.calculate(rot)
 
         if rot > 1:
             rot = 1
@@ -400,6 +411,10 @@ class DriveSubsystem(Subsystem):
             # Cubing the input (x^3) makes the joystick less sensitive near the center.
             leftSpeed = leftSpeed * leftSpeed * leftSpeed
             rightSpeed = rightSpeed * rightSpeed * rightSpeed
+            
+            # Apply slew rate limiting to smooth acceleration
+            leftSpeed = self.filterLeft.calculate(leftSpeed)
+            rightSpeed = self.filterRight.calculate(rightSpeed)
 
         self.desiredLeftVelocity = leftSpeed * DrivetrainConstants.maxRPM
         self.desiredRightVelocity = rightSpeed * DrivetrainConstants.maxRPM
