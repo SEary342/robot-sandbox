@@ -134,7 +134,10 @@ class SwerveSubsystem(Subsystem):
             except Exception as e:
                 print(f"Vision Init Failed: {e}")
 
-        self.configurePathPlanner()
+        try:
+            self.configurePathPlanner()
+        except Exception as e:
+            print(f"PathPlanner Config Failed: {e}")
 
         self.field = Field2d()
         SmartDashboard.putData("Field", self.field)
@@ -226,3 +229,26 @@ class SwerveSubsystem(Subsystem):
 
     def stop(self):
         self.driveChassisSpeeds(ChassisSpeeds(0, 0, 0), None)
+
+    def getDistanceToTag(self, tag_id: int) -> float:
+        if self.field_layout is not None:
+            tag_pose = self.field_layout.getTagPose(tag_id)
+            if tag_pose is not None:
+                return (
+                    self.getPose()
+                    .translation()
+                    .distance(tag_pose.toPose2d().translation())
+                )
+        return -1.0
+
+    def getDistanceToClosestTagInList(self, tag_ids: tuple[int, ...]) -> float:
+        min_dist = float("inf")
+        found_tag = False
+
+        for tag_id in tag_ids:
+            dist = self.getDistanceToTag(tag_id)
+            if 0 < dist < min_dist:
+                min_dist = dist
+                found_tag = True
+
+        return min_dist if found_tag else -1.0

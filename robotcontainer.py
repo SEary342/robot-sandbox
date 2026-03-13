@@ -37,7 +37,7 @@ class RobotContainer:
     def __init__(self, robot):
         # --- 1. Setup Subsystems (The Robot's Body Parts) ---
         # The robot's subsystems
-        self.kUseSwerve = False  # Toggle this to switch between Tank and Swerve
+        self.kUseSwerve = True  # Toggle this to switch between Tank and Swerve
 
         if self.kUseSwerve and SwerveSubsystem is not None:
             self.robotDrive = SwerveSubsystem()
@@ -71,7 +71,6 @@ class RobotContainer:
                     -self.driverController.getLeftX(),
                     -self.driverController.getRightX(),
                     True,  # Field Relative
-                    True,  # Rate Limit
                 ),
                 self.robotDrive
             ))

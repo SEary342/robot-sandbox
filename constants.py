@@ -88,8 +88,9 @@ kCamera1Pitch = math.radians(-30.0)
 # kCamera2Name = "Camera_Right", kCamera2OffsetX = 0.2, etc.
 
 # Shooter Constants
-kShooterMotorCAN = 6
-kIntakeMotorCAN = 4  # New motor for intake/feeding
+# TODO drop the ones or remap once we have the laucher installed
+kShooterMotorCAN = 16
+kIntakeMotorCAN = 14  # New motor for intake/feeding
 
 kIntakeSpeed = -1  # Negative speed pulls the ball IN
 kOuttakeSpeed = 0.5  # Positive speed pushes the ball OUT to the shooter
