@@ -5,6 +5,7 @@
 #
 
 from __future__ import annotations
+from wpimath import applyDeadband
 import typing
 
 from wpilib import XboxController
@@ -18,6 +19,7 @@ import commands2
 from pathplannerlib.auto import AutoBuilder
 from subsystems.drivesubsystem import DriveSubsystem, BadSimPhysics
 from subsystems.shootersubsystem import ShooterSubsystem
+
 try:
     from subsystems.swervesubsystem import SwerveSubsystem
 except ImportError:
@@ -42,7 +44,9 @@ class RobotContainer:
         if self.kUseSwerve and SwerveSubsystem is not None:
             self.robotDrive = SwerveSubsystem()
         elif self.kUseSwerve and SwerveSubsystem is None:
-            raise ImportError("kUseSwerve is True, but SwerveSubsystem could not be imported.")
+            raise ImportError(
+                "kUseSwerve is True, but SwerveSubsystem could not be imported."
+            )
         else:
             self.robotDrive = DriveSubsystem()
 
@@ -65,32 +69,44 @@ class RobotContainer:
         # This runs whenever no other drive command is happening and can be toggled
         # between arcade and tank drive using the 'B' button.
         if self.kUseSwerve:
-            self.robotDrive.setDefaultCommand(RunCommand(
-                lambda: self.robotDrive.drive(
-                    -self.driverController.getLeftY(),
-                    -self.driverController.getLeftX(),
-                    -self.driverController.getRightX(),
-                    True,  # Field Relative
-                ),
-                self.robotDrive
-            ))
+            self.robotDrive.setDefaultCommand(
+                RunCommand(
+                    lambda: self.robotDrive.drive(
+                        applyDeadband(-self.driverController.getLeftY(), 0.1),
+                        applyDeadband(-self.driverController.getLeftX(), 0.1),
+                        applyDeadband(-self.driverController.getRightX(), 0.1),
+                        True,
+                    ),
+                    self.robotDrive,
+                )
+            )
         else:
-            self.robotDrive.setDefaultCommand(RunCommand(
-                lambda: (
-                    self.robotDrive.tankDrive(
-                        -self.driverController.getRawAxis(XboxController.Axis.kLeftY),
-                        -self.driverController.getRawAxis(XboxController.Axis.kRightY),
-                        assumeManualInput=True,
-                    )
-                    if self.is_tank_drive
-                    else self.robotDrive.arcadeDrive(
-                        -self.driverController.getRawAxis(XboxController.Axis.kLeftY),
-                        -self.driverController.getRawAxis(XboxController.Axis.kLeftX),
-                        assumeManualInput=True,
-                    )
-                ),
-                self.robotDrive
-            ))
+            self.robotDrive.setDefaultCommand(
+                RunCommand(
+                    lambda: (
+                        self.robotDrive.tankDrive(
+                            -self.driverController.getRawAxis(
+                                XboxController.Axis.kLeftY
+                            ),
+                            -self.driverController.getRawAxis(
+                                XboxController.Axis.kRightY
+                            ),
+                            assumeManualInput=True,
+                        )
+                        if self.is_tank_drive
+                        else self.robotDrive.arcadeDrive(
+                            -self.driverController.getRawAxis(
+                                XboxController.Axis.kLeftY
+                            ),
+                            -self.driverController.getRawAxis(
+                                XboxController.Axis.kLeftX
+                            ),
+                            assumeManualInput=True,
+                        )
+                    ),
+                    self.robotDrive,
+                )
+            )
 
         # Default command for shooter is to stop (coast)
         self.shooter.setDefaultCommand(RunCommand(self.shooter.stop, self.shooter))
@@ -109,7 +125,7 @@ class RobotContainer:
         Use this method to define your button->command mappings. Buttons can be created by
         instantiating a GenericHID or one of its subclasses (Joystick or XboxController),
         and then calling passing it to a JoystickButton.
-        
+
         STUDENTS: This is where you tell the robot what buttons do what!
         """
 
@@ -120,9 +136,7 @@ class RobotContainer:
 
         # 'B' button: Toggles drive mode (tank) or zeros the gyro (swerve).
         if not self.kUseSwerve:
-            self.driverController.b().onTrue(
-                InstantCommand(self.toggle_drive_mode)
-            )
+            self.driverController.b().onTrue(InstantCommand(self.toggle_drive_mode))
         else:
             # In swerve mode, 'B' button zeros the gyro
             self.driverController.b().onTrue(
@@ -146,19 +160,23 @@ class RobotContainer:
         # POV Up: Reset odometry to a known starting position (e.g., Blue Alliance)
         self.driverController.povUp().onTrue(
             InstantCommand(
-                lambda: self.robotDrive.resetOdometry(Pose2d(1.0, 4.0, Rotation2d.fromDegrees(0))),
-                self.robotDrive
+                lambda: self.robotDrive.resetOdometry(
+                    Pose2d(1.0, 4.0, Rotation2d.fromDegrees(0))
+                ),
+                self.robotDrive,
             )
         )
 
         # POV Down: Reset odometry to a known starting position (e.g., Red Alliance)
         self.driverController.povDown().onTrue(
             InstantCommand(
-                lambda: self.robotDrive.resetOdometry(Pose2d(7.0, 4.0, Rotation2d.fromDegrees(180))),
-                self.robotDrive
+                lambda: self.robotDrive.resetOdometry(
+                    Pose2d(7.0, 4.0, Rotation2d.fromDegrees(180))
+                ),
+                self.robotDrive,
             )
         )
-        
+
         # --- Shooting and Intake Logic ---
 
         def shoot_sequence():
@@ -182,10 +200,16 @@ class RobotContainer:
                 self.shooter.stopIntake()
 
         # Right Bumper: Aim and shoot. This has priority over intake.
-        self.driverController.rightBumper().whileTrue(RunCommand(shoot_sequence, self.shooter))
+        self.driverController.rightBumper().whileTrue(
+            RunCommand(shoot_sequence, self.shooter)
+        )
 
         # Left Bumper: Run intake, but only if the right bumper (shoot) is not held.
-        (self.driverController.leftBumper().and_(self.driverController.rightBumper().not_())).whileTrue(
+        (
+            self.driverController.leftBumper().and_(
+                self.driverController.rightBumper().not_()
+            )
+        ).whileTrue(
             RunCommand(
                 lambda: (
                     self.shooter.setTargetRPM(constants.kShooterIntakeRPM),
@@ -202,14 +226,16 @@ class RobotContainer:
         # Check if chosenAuto exists and has a selection
         if self.chosenAuto is not None:
             return self.chosenAuto.getSelected()
-        
+
         # Fallback: Return a command that does nothing so the robot doesn't crash
-        return commands2.PrintCommand("No autonomous command selected or AutoBuilder failed")
+        return commands2.PrintCommand(
+            "No autonomous command selected or AutoBuilder failed"
+        )
 
     def configureAutos(self):
         # Initialize the attribute to None first
-        self.chosenAuto = None 
-        
+        self.chosenAuto = None
+
         try:
             self.chosenAuto = AutoBuilder.buildAutoChooser()
             if self.chosenAuto is not None:
