@@ -96,9 +96,9 @@ kOuttakeSpeed = 0.5  # Positive speed pushes the ball OUT to the shooter
 
 
 # Physics Model Constants
-kGoalHeightMeters = 2.64
+kGoalHeightMeters = 1.83
 kShooterHeightMeters = 0.5
-kShooterAngleDegrees = 45.0
+kShooterAngleDegrees = 70.0
 kShooterWheelDiameterMeters = 0.1016
 kShooterRecoveryFactor = 2.0
 kShooterPhysicsTuning = 1.0
