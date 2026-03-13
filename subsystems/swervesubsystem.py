@@ -43,7 +43,7 @@ class SwerveModule:
         # --- Drive Configuration ---
         driveConfig = rev.SparkMaxConfig()
         driveConfig.inverted(driveInverted)
-        driveConfig.setIdleMode(rev.SparkBaseConfig.IdleMode.kBrake)
+        driveConfig.setIdleMode(rev.SparkBaseConfig.IdleMode.kCoast)
         driveConfig.smartCurrentLimit(constants.kDriveMotorCurrentLimit)
         
         driveConfig.encoder.positionConversionFactor(swerveconstants.SwerveConstants.kDriveEncoderPositionFactor)
@@ -94,12 +94,12 @@ class SwerveSubsystem(Subsystem):
         self.frontRight = SwerveModule(
             swerveconstants.SwerveConstants.kFrontRightDrivingCanId,
             swerveconstants.SwerveConstants.kFrontRightTurningCanId,
-            False
+            True
         )
         self.rearLeft = SwerveModule(
             swerveconstants.SwerveConstants.kRearLeftDrivingCanId,
             swerveconstants.SwerveConstants.kRearLeftTurningCanId,
-            False
+            True
         )
         self.rearRight = SwerveModule(
             swerveconstants.SwerveConstants.kRearRightDrivingCanId,
