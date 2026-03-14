@@ -8,55 +8,58 @@ Think of the code like a robot's body and brain:
 
 *   **`robot.py`**: The **Heart**. It starts the robot and keeps the heartbeat (loop) running. You usually **don't** need to touch this file.
 *   **`robotcontainer.py`**: The **Brain & Controller**. This is where you tell the robot what hardware it has (Subsystems) and what buttons make them do things (Commands).
-*   **`constants.py`**: The **Settings**. All the magic numbers (Motor IDs, Speeds, PID values) go here. Change numbers here to tune the robot without breaking the logic.
-*   **`subsystems/`**: The **Body Parts**. Each file here represents a physical part of the robot.
-    *   `drivesubsystem.py`: Controls the wheels, encoders, and navigation.
-    *   `shootersubsystem.py`: Controls the flywheel to shoot notes.
-*   **`gyro/`**: Code for the **SenseHat Gyro**. This runs on a Raspberry Pi, not the RoboRIO.
+*   **`constants.py`**: The **Master Settings**. Toggle `kSwerveInstalled` here to switch between Tank and Swerve modes.
+*   **`tank_constants.py`**, **`swerve_constants.py`**, **`shooter_constants.py`**: Modular settings for each system.
+*   **`subsystems/`**: The **Body Parts**.
+    *   `drivesubsystem.py`: Classic Tank/Arcade drive.
+    *   `swervedrivesubsystem.py`: Independent 4-wheel Swerve drive (REV Ion / SparkMax).
+    *   `shootersubsystem.py`: Controls the flywheel to shoot notes (includes Physics & Lookup models).
 
 ---
 
 ## 🚀 How to Get Started
 
-### 1. Check Your IDs (`constants.py`)
-Open `constants.py`. Make sure the **CAN IDs** match what is physically on your robot.
-*   `kLeftMotor1CAN`, `kRightMotor1CAN`, etc.
-*   `kDriverControllerPort` (usually 0).
+### 1. Choose Your Drivetrain (`constants.py`)
+Open `constants.py`. Set `kSwerveInstalled = True` for Swerve or `False` for Tank. This will automatically load the correct CAN IDs and motor configurations.
 
-### 2. Configure the Drivetrain (`subsystems/drivesubsystem.py`)
-If your robot drives backwards or spins in place when it should go straight:
-*   Look at `__init__` in `DriveSubsystem`.
-*   Change `l1MotorInverted`, `r1MotorInverted`, etc., to `True` or `False` until it behaves correctly.
+### 2. Check Your IDs
+Make sure the **CAN IDs** in `tank_constants.py` or `swerve_constants.py` match your physical hardware.
+*   The **Drive Motors** are set to **Coast Mode** by default to prevent lurching.
+*   The **Swerve Turning Motors** remain in **Brake Mode** for steering precision.
 
 ### 3. Setup Your Controls (`robotcontainer.py`)
 Open `robotcontainer.py` and look at `configureButtonBindings`.
 *   This is where you map buttons (like `A`, `B`, `Bumpers`) to actions.
-*   Example: `self.driverController.rightBumper().whileTrue(...)` makes the shooter run when the bumper is held.
-
-### 4. The Gyro (Raspberry Pi)
-This robot uses a Raspberry Pi with a SenseHat for its Gyroscope.
-1.  Connect the Pi to the robot network.
-2.  Run `gyro/gyro_service.py` on the Pi.
-3.  Run `gyro_test.py` on your laptop to see if the data is coming through.
 
 ---
 
 ## 🎮 Controls
 
 ### Driver Controller (Xbox)
-*   **Left Stick Y**: Drive Forward/Backward (Arcade Mode) or Left Wheels (Tank Mode).
-*   **Left Stick X**: Turn Left/Right (Arcade Mode).
-*   **Right Stick Y**: Right Wheels (Tank Mode).
-*   **Button 'B'**: Toggle Drive Mode (Arcade vs. Tank).
-*   **Button 'A'**: Toggle Shooter Calculation (Physics vs. Lookup Table).
-*   **Button 'Y' (Hold)**: **Manual RPM Tuning**.
-    *   Spins the shooter to the RPM value set in the "Shooter/TuningRPM" field on the SmartDashboard.
+
+#### 🏎️ Driving (Changes based on `kSwerveInstalled`)
+*   **Swerve Mode**:
+    *   **Left Stick**: Move Robot (Field-Relative by default).
+    *   **Right Stick X**: Rotate Robot.
+    *   **Button 'B'**: Toggle Field-Relative vs. Robot-Relative.
+*   **Tank Mode**:
+    *   **Left Stick Y**: Forward/Backward (Arcade) or Left Wheels (Tank).
+    *   **Left Stick X**: Turn (Arcade).
+    *   **Right Stick Y**: Right Wheels (Tank).
+    *   **Button 'B'**: Toggle Arcade vs. Tank Drive.
+
+#### 🎯 Automation & Shooting
+*   **Button 'X' (Hold)**: **Aim at Target**. 
+    *   Automatically rotates the robot to face the closest tower AprilTag. Works in both Tank and Swerve!
 *   **Right Bumper (Hold)**: **Shoot**.
-    *   Automatically aims shooter speed based on distance to the Speaker.
-    *   Feeds the note only when the flywheel is at the correct speed.
+    *   Automatically calculates shooter speed based on distance using the `LookupTable`.
+    *   Check `Shooter/Status` on the dashboard to see why it's not firing.
 *   **Left Bumper (Hold)**: **Intake**.
-    *   Runs the intake rollers and spins the flywheel slowly.
-    *   *Note: Shooting (Right Bumper) overrides Intaking.*
+    *   Runs the intake rollers. *Note: Shooting overrides Intaking.*
+*   **Button 'A'**: Toggle Shooter Logic (Pure Physics vs. Lookup Table).
+*   **Button 'Y' (Hold)**: **Manual RPM Tuning** (Uses "Shooter/TuningRPM" from Dashboard).
+
+#### 📍 Navigation
 *   **D-Pad Up**: Reset Robot Position to **Blue Alliance** start.
 *   **D-Pad Down**: Reset Robot Position to **Red Alliance** start.
 
@@ -64,24 +67,20 @@ This robot uses a Raspberry Pi with a SenseHat for its Gyroscope.
 
 ## 🔧 How to Calibrate the Shooter
 
-The robot can use a lookup table (`kShooterDistanceToRPM` in `constants.py`) to quickly set the shooter speed based on distance. To get accurate values for this table, you need to calibrate.
+The robot uses a `LookupTable` in `shooter_constants.py` for precision shooting. 
 
-1.  Place the robot at a known distance from the target (e.g., 2.0 meters).
-2.  Open the **SmartDashboard** on the driver station laptop.
-3.  Find the text box labeled **"Shooter/TuningRPM"**.
-4.  Enter a starting RPM (e.g., 2800).
-5.  Press and hold the **'Y' button** on the controller. The shooter will spin up to the target RPM.
-6.  Once the "Shooter/AtSpeed" indicator is true, press the **Right Bumper** to shoot a note.
-7.  Observe the shot. If it's too high, lower the RPM in the dashboard. If it's too low, increase it.
-8.  Repeat steps 5-7 until you find the perfect RPM for that distance.
-9.  Open `constants.py` and update the `kShooterDistanceToRPM` dictionary with your new value (e.g., `2.0: 2850`).
-10. Repeat the entire process for several different distances to build out the table.
+1.  Place the robot at a known distance (e.g., 3.0 meters).
+2.  Set **"Shooter/TuningRPM"** on the **SmartDashboard** (e.g., 3500).
+3.  Hold **'Y'** to spin up and **Right Bumper** to test the shot.
+4.  If the shot is good, update the values in `shooter_constants.py`:
+    ```python
+    kShooterDistanceToRPM = LookupTable({
+        1.5: 2500,
+        3.0: 3550, # Updated value
+        ...
+    })
+    ```
 
-This process will give you a highly accurate `kShooterDistanceToRPM` map and make your automated shooting much more reliable.
-
----
-
-## 💡 Tips for Coding
-*   **Read the Comments**: We've added notes in the code to explain what complex lines do.
-*   **One thing at a time**: Test the drivetrain first. Then test the shooter. Don't try to do everything at once!
-*   **Ask Questions**: If `PID` or `Odometry` sounds scary, that's okay! These are tools to make the robot move precisely.
+## 💡 Tips
+*   **Coast Mode**: If the robot feels too "floaty," you can change the motors back to `kBrake` in the constants files.
+*   **Swerve Alignment**: If a wheel is facing the wrong way, check the `turnMotorInverted` settings in `subsystems/swervedrivesubsystem.py`.

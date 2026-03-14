@@ -48,13 +48,10 @@ class ShooterSubsystem(Subsystem):
         )
 
         # --- Configure Intake Motor ---
-        # This is the modern way to configure SparkMax controllers.
         intake_config = rev.SparkBaseConfig()
         intake_config.setIdleMode(rev.SparkBaseConfig.IdleMode.kCoast)
-        intake_config.smartCurrentLimit(
-            constants.kLaunchMotorCurrentLimit
-        )  # Limit current to protect the motor
-        intake_config.inverted(True)  # Set to True if it runs backwards
+        intake_config.smartCurrentLimit(constants.kLaunchMotorCurrentLimit)
+        intake_config.inverted(True)
         self.intakeMotor.configure(
             intake_config,
             rev.ResetMode.kResetSafeParameters,
@@ -62,7 +59,6 @@ class ShooterSubsystem(Subsystem):
         )
 
         # --- Configure Shooter Motor ---
-        # This configures the "brain" inside the motor controller to keep speed constant.
         config = rev.SparkBaseConfig()
         config.setIdleMode(rev.SparkBaseConfig.IdleMode.kCoast)
         config.smartCurrentLimit(constants.kLaunchMotorCurrentLimit)
@@ -74,7 +70,6 @@ class ShooterSubsystem(Subsystem):
             constants.kShooterMinOutput, constants.kShooterMaxOutput
         )
 
-        # Apply configuration
         self.shooterMotor.configure(
             config,
             rev.ResetMode.kResetSafeParameters,
@@ -90,15 +85,10 @@ class ShooterSubsystem(Subsystem):
             constants.kShooterHeightMeters,
             constants.kShooterAngleDegrees,
             constants.kShooterWheelDiameterMeters,
-            constants.kShooterRecoveryFactor,  # Usually 2.0 for hooded shooters
+            constants.kShooterRecoveryFactor,
         )
 
-        # Toggle state
         self.use_physics_model = False
-
-        # Cache sorted keys for interpolation
-        # This helps us calculate speed for distances between our known points.
-        self.sorted_distances = sorted(constants.kShooterDistanceToRPM.keys())
         self.targetRPM = 0.0
 
     def toggleShooterLogic(self):
@@ -108,80 +98,59 @@ class ShooterSubsystem(Subsystem):
 
     def setSpeedFromDistance(self, distance: float):
         """Sets target RPM based on distance using the selected implementation."""
-        target_rpm: Optional[float] = 0.0
+        target_rpm: float = 0.0
 
         if self.use_physics_model:
-            # --- PURE PHYSICS SOLUTION ---
             calculated_rpm = self.physics_calc.calculate_rpm(distance)
             if calculated_rpm is not None:
-                # Apply a tuning factor (e.g. 1.05) to account for air resistance/friction
                 target_rpm = calculated_rpm * constants.kShooterPhysicsTuning
-            else:
-                target_rpm = 0.0  # Or maintain last valid speed
         else:
-            # --- INTERPOLATED SOLUTION ---
-            if distance <= self.sorted_distances[0]:
-                target_rpm = constants.kShooterDistanceToRPM[self.sorted_distances[0]]
-            elif distance >= self.sorted_distances[-1]:
-                target_rpm = constants.kShooterDistanceToRPM[self.sorted_distances[-1]]
-            else:
-                for i in range(len(self.sorted_distances) - 1):
-                    d1, d2 = self.sorted_distances[i], self.sorted_distances[i + 1]
-                    if d1 <= distance <= d2:
-                        rpm1, rpm2 = (
-                            constants.kShooterDistanceToRPM[d1],
-                            constants.kShooterDistanceToRPM[d2],
-                        )
-                        target_rpm = rpm1 + (distance - d1) * (rpm2 - rpm1) / (d2 - d1)
-                        break
+            # Using the new LookupTable from constants
+            target_rpm = constants.kShooterDistanceToRPM.interpolate(distance)
 
         self.setTargetRPM(target_rpm)
 
     def runIntake(self):
-        """Runs the intake motor to acquire a note."""
         self.intakeMotor.set(constants.kIntakeSpeed)
 
     def runOuttake(self):
-        """Runs the intake motor to feed a note to the shooter."""
         self.intakeMotor.set(constants.kOuttakeSpeed)
 
     def stopIntake(self):
-        """Stops only the intake motor."""
         self.intakeMotor.stopMotor()
 
     def setTargetRPM(self, rpm: float):
-        """
-        Sets the target RPM directly.
-        """
         self.targetRPM = rpm
         self.pidController.setReference(
             self.targetRPM, rev.SparkBase.ControlType.kVelocity
         )
 
     def stop(self):
-        """
-        Stops the shooter and intake motors.
-        """
         self.targetRPM = 0.0
         self.shooterMotor.stopMotor()
         self.intakeMotor.stopMotor()
 
+    def ready_to_fire(self) -> str:
+        """
+        Returns an empty string if ready to fire, or a reason why it's not ready.
+        Useful for driver feedback on the dashboard.
+        """
+        if self.targetRPM <= 0:
+            return "No target RPM set"
+            
+        current_rpm = self.encoder.getVelocity()
+        if current_rpm < self.targetRPM - constants.kShooterToleranceRPM:
+            return f"Under speed: {current_rpm:.0f} < {self.targetRPM:.0f}"
+        if current_rpm > self.targetRPM + constants.kShooterToleranceRPM:
+            return f"Over speed: {current_rpm:.0f} > {self.targetRPM:.0f}"
+            
+        return "" # Ready!
+
     def isAtSpeed(self) -> bool:
-        """
-        Returns true if the shooter is at the target speed within tolerance.
-        """
-        return not constants.kCamConfigured or (
-            abs(self.encoder.getVelocity() - self.targetRPM)
-            <= constants.kShooterToleranceRPM
-        )
+        return self.ready_to_fire() == ""
 
     def periodic(self):
-        # Publish data to SmartDashboard for debugging and driver feedback
-        # STUDENTS: This sends the numbers to the laptop screen so you can see them!
         SmartDashboard.putNumber("Shooter/TargetRPM", self.targetRPM)
         SmartDashboard.putNumber("Shooter/CurrentRPM", self.encoder.getVelocity())
-        SmartDashboard.putNumber(
-            "Shooter/AppliedOutput", self.shooterMotor.getAppliedOutput()
-        )
-        SmartDashboard.putBoolean("Shooter/UsingPhysics", self.use_physics_model)
         SmartDashboard.putBoolean("Shooter/AtSpeed", self.isAtSpeed())
+        SmartDashboard.putString("Shooter/Status", self.ready_to_fire())

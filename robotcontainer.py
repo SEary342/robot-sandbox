@@ -17,7 +17,9 @@ import commands2
 
 from pathplannerlib.auto import AutoBuilder
 from subsystems.drivesubsystem import DriveSubsystem, BadSimPhysics
+from subsystems.swervedrivesubsystem import SwerveDriveSubsystem
 from subsystems.shootersubsystem import ShooterSubsystem
+from commands.aimattarget import AimAtTarget
 
 import constants
 
@@ -33,10 +35,16 @@ class RobotContainer:
     def __init__(self, robot):
         # --- 1. Setup Subsystems (The Robot's Body Parts) ---
         # The robot's subsystems
-        self.robotDrive = DriveSubsystem()
+        if constants.kSwerveInstalled:
+            self.robotDrive = SwerveDriveSubsystem()
+        else:
+            self.robotDrive = DriveSubsystem()
+            
         self.shooter = ShooterSubsystem()
 
         self.is_tank_drive = False
+        self.field_relative = True # Default for swerve
+        
         # The driver's controller.
         self.driverController = CommandXboxController(constants.kDriverControllerPort)
 
@@ -49,36 +57,53 @@ class RobotContainer:
         self.configureAutos()
 
         # Configure default subsystems
-        # Set the default drive command to split-stick arcade drive
-        # This runs whenever no other drive command is happening and can be toggled
-        # between arcade and tank drive using the 'B' button.
-        self.robotDrive.setDefaultCommand(RunCommand(
-            lambda: (
-                self.robotDrive.tankDrive(
-                    -self.driverController.getRawAxis(XboxController.Axis.kLeftY),
-                    -self.driverController.getRawAxis(XboxController.Axis.kRightY),
-                    assumeManualInput=True,
-                )
-                if self.is_tank_drive
-                else self.robotDrive.arcadeDrive(
-                    -self.driverController.getRawAxis(XboxController.Axis.kLeftY),
-                    -self.driverController.getRawAxis(XboxController.Axis.kLeftX),
-                    assumeManualInput=True,
-                )
-            ),
-            self.robotDrive
-        ))
+        if constants.kSwerveInstalled:
+            self.robotDrive.setDefaultCommand(RunCommand(
+                lambda: self.robotDrive.drive(
+                    -self.driverController.getLeftY(),
+                    -self.driverController.getLeftX(),
+                    -self.driverController.getRightX(),
+                    self.field_relative,
+                    True,
+                    square=True
+                ),
+                self.robotDrive
+            ))
+        else:
+            # Set the default drive command to split-stick arcade drive
+            # This runs whenever no other drive command is happening and can be toggled
+            # between arcade and tank drive using the 'B' button.
+            self.robotDrive.setDefaultCommand(RunCommand(
+                lambda: (
+                    self.robotDrive.tankDrive(
+                        -self.driverController.getRawAxis(XboxController.Axis.kLeftY),
+                        -self.driverController.getRawAxis(XboxController.Axis.kRightY),
+                        assumeManualInput=True,
+                    )
+                    if self.is_tank_drive
+                    else self.robotDrive.arcadeDrive(
+                        -self.driverController.getRawAxis(XboxController.Axis.kLeftY),
+                        -self.driverController.getRawAxis(XboxController.Axis.kLeftX),
+                        assumeManualInput=True,
+                    )
+                ),
+                self.robotDrive
+            ))
 
         # Default command for shooter is to stop (coast)
         self.shooter.setDefaultCommand(RunCommand(self.shooter.stop, self.shooter))
 
-        if commands2.TimedCommandRobot.isSimulation():
+        if not constants.kSwerveInstalled and commands2.TimedCommandRobot.isSimulation():
             self.robotDrive.simPhysics = BadSimPhysics(self.robotDrive, robot)
 
     def toggle_drive_mode(self):
-        """Toggles between arcade and tank drive modes."""
-        self.is_tank_drive = not self.is_tank_drive
-        wpilib.SmartDashboard.putBoolean("Tank Drive Active", self.is_tank_drive)
+        """Toggles between arcade and tank drive modes (Tank) or field-relative (Swerve)."""
+        if constants.kSwerveInstalled:
+            self.field_relative = not self.field_relative
+            wpilib.SmartDashboard.putBoolean("Field Relative Active", self.field_relative)
+        else:
+            self.is_tank_drive = not self.is_tank_drive
+            wpilib.SmartDashboard.putBoolean("Tank Drive Active", self.is_tank_drive)
 
     def configureButtonBindings(self):
         """
@@ -97,6 +122,17 @@ class RobotContainer:
         # 'B' button: Toggles the drive mode between arcade and tank drive.
         self.driverController.b().onTrue(
             InstantCommand(self.toggle_drive_mode)
+        )
+
+        # 'X' button: Aim at the speaker target.
+        self.driverController.x().whileTrue(
+            commands2.DeferredCommand(
+                lambda: AimAtTarget(
+                    self.robotDrive,
+                    constants.blueTargets if wpilib.DriverStation.getAlliance() == wpilib.DriverStation.Alliance.kBlue else constants.redTargets
+                ),
+                {self.robotDrive}
+            )
         )
 
         # 'Y' button: Manual RPM tuning mode.

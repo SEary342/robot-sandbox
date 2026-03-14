@@ -508,7 +508,32 @@ class DriveSubsystem(Subsystem):
                 min_dist = dist
                 found_tag = True
 
-        return min_dist if found_tag else -1.0
+        return min_dist if found_tag else 2.0
+
+    def getRotationToClosestTagInList(self, tag_ids: tuple[int, ...]) -> Rotation2d:
+        """
+        Calculates the rotation required to face the closest AprilTag from a given list.
+        """
+        min_dist = float("inf")
+        closest_tag_pose = None
+
+        if self.field_layout is None:
+            return Rotation2d(0)
+
+        for tag_id in tag_ids:
+            tag_pose = self.field_layout.getTagPose(tag_id)
+            if tag_pose is not None:
+                dist = self.getPose().translation().distance(tag_pose.toPose2d().translation())
+                if dist < min_dist:
+                    min_dist = dist
+                    closest_tag_pose = tag_pose
+
+        if closest_tag_pose:
+            vector = closest_tag_pose.toPose2d().translation() - self.getPose().translation()
+            return vector.angle()
+
+        return self.getPose().rotation()
+
 
 
 def _getFollowMotorConfig(leadCanID, inverted):
@@ -518,6 +543,7 @@ def _getFollowMotorConfig(leadCanID, inverted):
     """
     config = rev.SparkBaseConfig()
     config.follow(leadCanID, inverted)
+    config.setIdleMode(rev.SparkBaseConfig.IdleMode.kCoast)
 
     config.smartCurrentLimit(constants.kDriveMotorCurrentLimit)
     return config
