@@ -7,7 +7,7 @@ from ICM20948 import ICM20948
 def run_service():
     # 1. NetworkTables 4 Setup
     inst = ntcore.NetworkTableInstance.getDefault()
-    inst.setServerTeam(1234) # Replace with your team number
+    inst.setServerTeam(9721) # Replace with your team number
     inst.startClient4("SenseHat_Pi")
     
     table = inst.getTable("SenseHat")

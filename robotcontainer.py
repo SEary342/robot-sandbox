@@ -131,7 +131,7 @@ class RobotContainer:
                     self.robotDrive,
                     constants.blueTargets if wpilib.DriverStation.getAlliance() == wpilib.DriverStation.Alliance.kBlue else constants.redTargets
                 ),
-                {self.robotDrive}
+                self.robotDrive
             )
         )
 

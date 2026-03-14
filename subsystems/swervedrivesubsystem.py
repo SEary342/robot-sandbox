@@ -1,19 +1,19 @@
 import math
 import typing
 import ntcore
-import wpilib
 from commands2 import Subsystem
 from wpimath.filter import SlewRateLimiter
-from wpimath.geometry import Pose2d, Rotation2d, Translation2d, Transform3d, Translation3d, Rotation3d
+from wpimath.geometry import Pose2d, Rotation2d, Transform3d, Translation3d, Rotation3d
 from wpimath.kinematics import (
     ChassisSpeeds,
     SwerveModuleState,
+    SwerveModulePosition,
     SwerveDrive4Kinematics,
 )
 from wpimath.estimator import SwerveDrive4PoseEstimator
 from wpilib import SmartDashboard, Field2d, DriverStation, Timer
 from photonlibpy.photonCamera import PhotonCamera
-from photonlibpy.photonPoseEstimator import PhotonPoseEstimator, PoseStrategy
+from photonlibpy.photonPoseEstimator import PhotonPoseEstimator
 from robotpy_apriltag import AprilTagFieldLayout, AprilTagField
 
 import constants
@@ -117,7 +117,7 @@ class SwerveDriveSubsystem(Subsystem):
     def getPose(self) -> Pose2d:
         return self.poseEstimator.getEstimatedPosition()
 
-    def getModulePositions(self) -> typing.Tuple[SwerveModuleState, SwerveModuleState, SwerveModuleState, SwerveModuleState]:
+    def getModulePositions(self) -> typing.Tuple[SwerveModulePosition, SwerveModulePosition, SwerveModulePosition, SwerveModulePosition]:
         return (
             self.frontLeft.getPosition(),
             self.frontRight.getPosition(),
@@ -188,7 +188,7 @@ class SwerveDriveSubsystem(Subsystem):
     def stop(self):
         self.drive(0, 0, 0, False, False)
 
-    def getDistanceToClosestTagInList(self, tags: typing.List[int]) -> float:
+    def getDistanceToClosestTagInList(self, tags: typing.Sequence[int]) -> float:
         # Helper for shooting logic, similar to tank drive
         pose = self.getPose()
         min_dist = 999.0
@@ -203,7 +203,7 @@ class SwerveDriveSubsystem(Subsystem):
                     min_dist = dist
         return min_dist
 
-    def getRotationToClosestTagInList(self, tags: typing.List[int]) -> Rotation2d:
+    def getRotationToClosestTagInList(self, tags: typing.Sequence[int]) -> Rotation2d:
         """
         Calculates the rotation required to face the closest AprilTag from a given list.
         """

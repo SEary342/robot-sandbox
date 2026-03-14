@@ -1,7 +1,5 @@
 import math
-from rev import SparkMax, SparkLowLevel, SparkBase, SparkClosedLoopController, SparkRelativeEncoder, \
-    ResetMode, PersistMode
-from wpilib import SmartDashboard
+from rev import SparkMax, SparkLowLevel, ResetMode, PersistMode
 from wpimath.geometry import Rotation2d
 from wpimath.kinematics import SwerveModuleState, SwerveModulePosition
 

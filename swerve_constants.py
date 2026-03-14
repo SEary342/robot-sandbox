@@ -2,7 +2,7 @@ import math
 from wpimath import units
 from wpimath.geometry import Translation2d
 from wpimath.kinematics import SwerveDrive4Kinematics
-from rev import SparkBase, SparkBaseConfig, FeedbackSensor
+from rev import SparkBaseConfig, FeedbackSensor
 
 class NeoMotorConstants:
     kFreeSpeedRpm = 5676

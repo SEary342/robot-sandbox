@@ -7,9 +7,9 @@ class LookupTable:
     Allows you to lookup points in a pre-calibrated table, using linear interpolation.
     """
     def __init__(self, points: Dict[float, float]):
-        points = sorted(points.items())
-        self.x = np.array([x for x, y in points], dtype=np.float32)
-        self.y = np.array([y for x, y in points], dtype=np.float32)
+        sorted_points = sorted(points.items())
+        self.x = np.array([x for x, y in sorted_points], dtype=np.float32)
+        self.y = np.array([y for x, y in sorted_points], dtype=np.float32)
 
     def interpolate(self, x: float):
         return float(np.interp(x, self.x, self.y))

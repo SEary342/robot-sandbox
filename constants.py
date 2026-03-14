@@ -1,6 +1,3 @@
-# Master Constants File
-import math
-
 # Toggle this to switch between Tank and Swerve drivetrain code/IDs
 kSwerveInstalled = True
 
@@ -12,9 +9,9 @@ kLaunchMotorCurrentLimit = 40
 kDriveMotorCurrentLimit = 40
 
 # Import Shooter/Camera Constants (Common to both)
-from shooter_constants import *
+from shooter_constants import *  # noqa: E402, F403
 
 if kSwerveInstalled:
-    from swerve_constants import *
+    from swerve_constants import *  # noqa: E402, F403
 else:
-    from tank_constants import *
+    from tank_constants import *  # noqa: E402, F403

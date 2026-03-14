@@ -1,5 +1,3 @@
-import math
-import wpilib
 from commands2 import Command
 from wpimath.controller import PIDController
 import constants

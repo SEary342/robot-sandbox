@@ -27,6 +27,7 @@ from pathplannerlib.config import RobotConfig
 from pathplannerlib.controller import PPLTVController
 
 import constants
+import tank_constants
 import rev
 
 
@@ -63,41 +64,41 @@ class DriveSubsystem(Subsystem):
             # to prevent CAN timeout errors. Here, we assume motors with CAN IDs
             # kLeftMotor1CAN (1) and kLeftMotor2CAN (2) are present.
             self.motorL1 = rev.SparkMax(
-                constants.kLeftMotor1CAN, rev.SparkMax.MotorType.kBrushless
+                tank_constants.kLeftMotor1CAN, rev.SparkMax.MotorType.kBrushless
             )
             self.motorL2 = None
             # We'll use the motor with ID 2 as our "right" motor on the bench.
             self.motorR1 = rev.SparkMax(
-                constants.kLeftMotor2CAN, rev.SparkMax.MotorType.kBrushless
+                tank_constants.kLeftMotor2CAN, rev.SparkMax.MotorType.kBrushless
             )
             self.motorR2 = None
         else:
             # In normal robot mode, initialize all four motors from constants.
             self.motorL1 = rev.SparkMax(
-                constants.kLeftMotor1CAN, rev.SparkMax.MotorType.kBrushless
+                tank_constants.kLeftMotor1CAN, rev.SparkMax.MotorType.kBrushless
             )
             self.motorL2 = rev.SparkMax(
-                constants.kLeftMotor2CAN, rev.SparkMax.MotorType.kBrushless
+                tank_constants.kLeftMotor2CAN, rev.SparkMax.MotorType.kBrushless
             )
             self.motorR1 = rev.SparkMax(
-                constants.kRightMotor1CAN, rev.SparkMax.MotorType.kBrushless
+                tank_constants.kRightMotor1CAN, rev.SparkMax.MotorType.kBrushless
             )
             self.motorR2 = rev.SparkMax(
-                constants.kRightMotor2CAN, rev.SparkMax.MotorType.kBrushless
+                tank_constants.kRightMotor2CAN, rev.SparkMax.MotorType.kBrushless
             )
 
         # --- Motor Configuration ---
         # Configure the "lead" motors. These are the ones with encoders.
         self.motorL1.configure(
             _getLeadMotorConfig(
-                l1MotorInverted, constants.kEncoderPositionConversionFactor
+                l1MotorInverted, tank_constants.kEncoderPositionConversionFactor
             ),
             ResetMode.kResetSafeParameters,
             PersistMode.kPersistParameters,
         )
         self.motorR1.configure(
             _getLeadMotorConfig(
-                r1MotorInverted, constants.kEncoderPositionConversionFactor
+                r1MotorInverted, tank_constants.kEncoderPositionConversionFactor
             ),
             ResetMode.kResetSafeParameters,
             PersistMode.kPersistParameters,
@@ -107,7 +108,7 @@ class DriveSubsystem(Subsystem):
         if self.motorL2:
             self.motorL2.configure(
                 _getFollowMotorConfig(
-                    constants.kLeftMotor1CAN, l2MotorInverted != l1MotorInverted
+                    tank_constants.kLeftMotor1CAN, l2MotorInverted != l1MotorInverted
                 ),
                 ResetMode.kResetSafeParameters,
                 PersistMode.kPersistParameters,
@@ -115,7 +116,7 @@ class DriveSubsystem(Subsystem):
         if self.motorR2:
             self.motorR2.configure(
                 _getFollowMotorConfig(
-                    constants.kRightMotor1CAN, r2MotorInverted != r1MotorInverted
+                    tank_constants.kRightMotor1CAN, r2MotorInverted != r1MotorInverted
                 ),
                 ResetMode.kResetSafeParameters,
                 PersistMode.kPersistParameters,
@@ -161,12 +162,13 @@ class DriveSubsystem(Subsystem):
 
         # --- Pose Estimator (Replaces Odometry) ---
         self.poseEstimator = DifferentialDrivePoseEstimator(
-            constants.kDriveKinematics,
+            tank_constants.kDriveKinematics,
             self.getGyroHeading(),
-            self.leftEncoder.getPosition() * constants.kLeftEncoderSign,
-            self.rightEncoder.getPosition() * constants.kRightEncoderSign,
+            self.leftEncoder.getPosition() * tank_constants.kLeftEncoderSign,
+            self.rightEncoder.getPosition() * tank_constants.kRightEncoderSign,
             Pose2d(),
         )
+
 
         self.field = Field2d()
         SmartDashboard.putData("Field", self.field)
@@ -275,8 +277,8 @@ class DriveSubsystem(Subsystem):
         # 1. Update Pose Estimator with Encoders + Gyro
         self.poseEstimator.update(
             self.getGyroHeading(),
-            self.leftEncoder.getPosition() * constants.kLeftEncoderSign,
-            self.rightEncoder.getPosition() * constants.kRightEncoderSign,
+            self.leftEncoder.getPosition() * tank_constants.kLeftEncoderSign,
+            self.rightEncoder.getPosition() * tank_constants.kRightEncoderSign,
         )
 
         # 2. Update Pose Estimator with Vision, using the logic from the PhotonLib example
@@ -310,22 +312,22 @@ class DriveSubsystem(Subsystem):
         """Returns the current wheel speeds of the robot."""
         return DifferentialDriveWheelSpeeds(
             self.leftEncoder.getVelocity(),
-            self.rightEncoder.getVelocity() * constants.kRightEncoderSign,
+            self.rightEncoder.getVelocity() * tank_constants.kRightEncoderSign,
         )
 
     def getChassisSpeeds(self):
         """Returns the current chassis speeds of the robot."""
-        return constants.kDriveKinematics.toChassisSpeeds(self.getWheelSpeeds())
+        return tank_constants.kDriveKinematics.toChassisSpeeds(self.getWheelSpeeds())
 
     def driveChassisSpeeds(self, speeds: ChassisSpeeds, feedforwards):
         """Drives the robot with the given chassis speeds."""
-        wheelSpeeds = constants.kDriveKinematics.toWheelSpeeds(speeds)
+        wheelSpeeds = tank_constants.kDriveKinematics.toWheelSpeeds(speeds)
 
         self.desiredLeftVelocity = (
-            wheelSpeeds.left * 60 / (math.pi * constants.kWheelDiameterMeters)
+            wheelSpeeds.left * 60 / (math.pi * tank_constants.kWheelDiameterMeters)
         )
         self.desiredRightVelocity = (
-            wheelSpeeds.right * 60 / (math.pi * constants.kWheelDiameterMeters)
+            wheelSpeeds.right * 60 / (math.pi * tank_constants.kWheelDiameterMeters)
         )
 
         # PathPlanner provides feedforwards in Volts.
@@ -349,8 +351,8 @@ class DriveSubsystem(Subsystem):
         """Resets the odometry to the specified pose."""
         self.poseEstimator.resetPosition(
             self.getGyroHeading(),
-            self.leftEncoder.getPosition() * constants.kLeftEncoderSign,
-            self.rightEncoder.getPosition() * constants.kRightEncoderSign,
+            self.leftEncoder.getPosition() * tank_constants.kLeftEncoderSign,
+            self.rightEncoder.getPosition() * tank_constants.kRightEncoderSign,
             pose,
         )
 
@@ -388,8 +390,8 @@ class DriveSubsystem(Subsystem):
 
         # Calculate target RPM for each side
         # Left = Forward - Turn, Right = Forward + Turn
-        self.desiredRightVelocity = (fwd + rot) * DrivetrainConstants.maxRPM
-        self.desiredLeftVelocity = (fwd - rot) * DrivetrainConstants.maxRPM
+        self.desiredRightVelocity = (fwd + rot) * tank_constants.DrivetrainConstants.maxRPM
+        self.desiredLeftVelocity = (fwd - rot) * tank_constants.DrivetrainConstants.maxRPM
 
         if self.diffDrive:
             # use basic DifferentialDrive and don't take advantage of low-level Rev PID controller
@@ -438,8 +440,8 @@ class DriveSubsystem(Subsystem):
         Useful for simple autonomous commands like "Drive forward 2 meters".
         """
         return (
-            self.leftEncoder.getPosition() * constants.kLeftEncoderSign
-            + self.rightEncoder.getPosition() * constants.kRightEncoderSign
+            self.leftEncoder.getPosition() * tank_constants.kLeftEncoderSign
+            + self.rightEncoder.getPosition() * tank_constants.kRightEncoderSign
         ) / 2
 
     def setMaxOutput(self, maxOutput):
@@ -575,9 +577,9 @@ def _getLeadMotorConfig(
 
     # Setup PID (The math that keeps speed constant)
     config.closedLoop.pid(
-        DrivetrainConstants.initialP, 0.0, DrivetrainConstants.initialD
+        tank_constants.DrivetrainConstants.initialP, 0.0, tank_constants.DrivetrainConstants.initialD
     )
-    config.closedLoop.velocityFF(DrivetrainConstants.initialFF)
+    config.closedLoop.velocityFF(tank_constants.DrivetrainConstants.initialFF)
     config.closedLoop.outputRange(-1, +1)
     return config
 
@@ -604,13 +606,13 @@ class BadSimPhysics(object):
         dt = self.t - past
         if self.robot.isEnabled():
             drivetrain = self.drivetrain
-            toDriveSpeed = constants.kDriveSpeedAtMaxRPM / DrivetrainConstants.maxRPM
+            toDriveSpeed = tank_constants.kDriveSpeedAtMaxRPM / DrivetrainConstants.maxRPM
 
             states = DifferentialDriveWheelSpeeds(
                 left=drivetrain.desiredLeftVelocity * toDriveSpeed,
                 right=drivetrain.desiredRightVelocity * toDriveSpeed,
             )
-            speeds = constants.kDriveKinematics.toChassisSpeeds(states)
+            speeds = tank_constants.kDriveKinematics.toChassisSpeeds(states)
 
             # Calculate new pose using Twist2d (kinematics integration)
             from wpimath.geometry import Twist2d
