@@ -1,8 +1,6 @@
-import math
 from rev import SparkMax, SparkLowLevel, ResetMode, PersistMode
 from wpimath.geometry import Rotation2d
 from wpimath.kinematics import SwerveModuleState, SwerveModulePosition
-
 import constants
 
 class SwerveModule:
@@ -10,34 +8,29 @@ class SwerveModule:
         self,
         drivingCANId: int,
         turningCANId: int,
-        turnMotorInverted = True,
         placement: str = "",
     ) -> None:
-        """Constructs a swerve module using Rev (SparkMax) motor controllers."""
         self.desiredState = SwerveModuleState(0.0, Rotation2d())
 
         # Turning motor setup
-        self.turningRevMotor = SparkMax(
-            turningCANId, SparkLowLevel.MotorType.kBrushless
-        )
+        self.turningRevMotor = SparkMax(turningCANId, SparkLowLevel.MotorType.kBrushless)
         
-        # In this implementation, we assume we have an absolute encoder plugged into the SparkMax
-        useAbsoluteAngleGoals = True 
-        
+        # WE DO NOT factory reset this motor. 
+        # This allows the Hardware Client settings (Offsets, PID, Inversion) to persist.
         self.turningRevMotor.configure(
-            constants.getSwerveTurningMotorConfig(turnMotorInverted, useAbsoluteEncoderGoals=useAbsoluteAngleGoals),
-            ResetMode.kResetSafeParameters,
-            PersistMode.kPersistParameters)
+            constants.getSwerveTurningMotorConfig(),
+            ResetMode.kNoResetSafeParameters, 
+            PersistMode.kPersistParameters
+        )
             
         self.turningRevRelEncoder = self.turningRevMotor.getEncoder()
         self.turningRevAbsEncoder = self.turningRevMotor.getAbsoluteEncoder()
-        
         self.turningRevAbsController = self.turningRevMotor.getClosedLoopController()
 
         # Driving motor setup
-        self.drivingRevMotor = SparkMax(
-            drivingCANId, SparkLowLevel.MotorType.kBrushless
-        )
+        self.drivingRevMotor = SparkMax(drivingCANId, SparkLowLevel.MotorType.kBrushless)
+        
+        # We DO factory reset the drive motor because its config is fully handled in code.
         self.drivingRevMotor.configure(
             constants.getSwerveDrivingMotorConfig(),
             ResetMode.kResetSafeParameters,
@@ -49,9 +42,6 @@ class SwerveModule:
 
         # Initial state
         self.desiredState.angle = Rotation2d(self.getAbsoluteRadians())
-
-    def getRelativeRadians(self) -> float:
-        return self.turningRevRelEncoder.getPosition() / constants.ModuleConstants.kTurningReductionRatio * math.tau
 
     def getAbsoluteRadians(self) -> float:
         return self.turningRevAbsEncoder.getPosition()
@@ -70,7 +60,6 @@ class SwerveModule:
             self.stop()
             return
 
-        # Optimize the reference state to avoid spinning further than 90 degrees.
         optimizedDesiredState = desiredState
         SwerveModuleState.optimize(optimizedDesiredState, Rotation2d(self.getAbsoluteRadians()))
 
@@ -84,8 +73,6 @@ class SwerveModule:
         self.drivingRevPIDController.setReference(0, SparkLowLevel.ControlType.kVelocity)
         angle = self.getAbsoluteRadians()
         self.setAbsoluteRadiansGoal(angle)
-        if self.desiredState.speed != 0:
-            self.desiredState = SwerveModuleState(speed=0, angle=Rotation2d(angle))
 
     def resetEncoders(self) -> None:
         self.drivingRevEncoder.setPosition(0)

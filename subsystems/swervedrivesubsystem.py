@@ -24,31 +24,28 @@ class SwerveDriveSubsystem(Subsystem):
         super().__init__()
 
         # Create Swerve Modules
+        # Removed turnMotorInverted; this is now handled in the REV Hardware Client flash.
         self.frontLeft = SwerveModule(
             constants.DriveConstants.kFrontLeftDrivingCanId,
             constants.DriveConstants.kFrontLeftTurningCanId,
-            turnMotorInverted=constants.ModuleConstants.kTurningMotorInverted,
             placement="FL",
         )
 
         self.frontRight = SwerveModule(
             constants.DriveConstants.kFrontRightDrivingCanId,
             constants.DriveConstants.kFrontRightTurningCanId,
-            turnMotorInverted=constants.ModuleConstants.kTurningMotorInverted,
             placement="FR",
         )
 
         self.rearLeft = SwerveModule(
             constants.DriveConstants.kRearLeftDrivingCanId,
             constants.DriveConstants.kRearLeftTurningCanId,
-            turnMotorInverted=constants.ModuleConstants.kTurningMotorInverted,
             placement="RL",
         )
 
         self.rearRight = SwerveModule(
             constants.DriveConstants.kRearRightDrivingCanId,
             constants.DriveConstants.kRearRightTurningCanId,
-            turnMotorInverted=constants.ModuleConstants.kTurningMotorInverted,
             placement="RR",
         )
 
