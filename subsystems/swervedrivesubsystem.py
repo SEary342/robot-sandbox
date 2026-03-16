@@ -28,24 +28,28 @@ class SwerveDriveSubsystem(Subsystem):
         self.frontLeft = SwerveModule(
             constants.DriveConstants.kFrontLeftDrivingCanId,
             constants.DriveConstants.kFrontLeftTurningCanId,
+            constants.DriveConstants.kFrontLeftChassisAngularOffset,
             placement="FL",
         )
 
         self.frontRight = SwerveModule(
             constants.DriveConstants.kFrontRightDrivingCanId,
             constants.DriveConstants.kFrontRightTurningCanId,
+            constants.DriveConstants.kFrontRightChassisAngularOffset,
             placement="FR",
         )
 
         self.rearLeft = SwerveModule(
             constants.DriveConstants.kRearLeftDrivingCanId,
             constants.DriveConstants.kRearLeftTurningCanId,
+            constants.DriveConstants.kBackLeftChassisAngularOffset,
             placement="RL",
         )
 
         self.rearRight = SwerveModule(
             constants.DriveConstants.kRearRightDrivingCanId,
             constants.DriveConstants.kRearRightTurningCanId,
+            constants.DriveConstants.kBackRightChassisAngularOffset,
             placement="RR",
         )
 

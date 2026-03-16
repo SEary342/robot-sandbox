@@ -27,6 +27,12 @@ class DriveConstants:
     kRearRightDrivingCanId, kRearRightTurningCanId = 2, 1
     kGyroReversed = -1
 
+    # Angular offsets of the modules relative to the chassis in radians
+    kFrontLeftChassisAngularOffset = -math.pi / 2
+    kFrontRightChassisAngularOffset = 0
+    kBackLeftChassisAngularOffset = math.pi
+    kBackRightChassisAngularOffset = math.pi / 2
+
 class ModuleConstants:
     # --- Drive Settings ---
     kWheelDiameterMeters = 0.0762

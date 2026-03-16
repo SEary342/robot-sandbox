@@ -8,8 +8,10 @@ class SwerveModule:
         self,
         drivingCANId: int,
         turningCANId: int,
+        chassisAngularOffset: float,
         placement: str = "",
     ) -> None:
+        self.chassisAngularOffset = chassisAngularOffset
         self.desiredState = SwerveModuleState(0.0, Rotation2d())
 
         # Turning motor setup
@@ -41,19 +43,22 @@ class SwerveModule:
         self.drivingRevEncoder.setPosition(0)
 
         # Initial state
-        self.desiredState.angle = Rotation2d(self.getAbsoluteRadians())
+        self.desiredState.angle = self.getAngle()
 
     def getAbsoluteRadians(self) -> float:
         return self.turningRevAbsEncoder.getPosition()
+
+    def getAngle(self) -> Rotation2d:
+        return Rotation2d(self.getAbsoluteRadians() - self.chassisAngularOffset)
 
     def setAbsoluteRadiansGoal(self, goal) -> None:
         self.turningRevAbsController.setReference(goal, SparkLowLevel.ControlType.kPosition)
 
     def getState(self) -> SwerveModuleState:
-        return SwerveModuleState(self.drivingRevEncoder.getVelocity(), Rotation2d(self.getAbsoluteRadians()))
+        return SwerveModuleState(self.drivingRevEncoder.getVelocity(), self.getAngle())
 
     def getPosition(self) -> SwerveModulePosition:
-        return SwerveModulePosition(self.drivingRevEncoder.getPosition(), Rotation2d(self.getAbsoluteRadians()))
+        return SwerveModulePosition(self.drivingRevEncoder.getPosition(), self.getAngle())
 
     def setDesiredState(self, desiredState: SwerveModuleState) -> None:
         if abs(desiredState.speed) < constants.ModuleConstants.kDrivingMinSpeedMetersPerSecond:
@@ -61,9 +66,9 @@ class SwerveModule:
             return
 
         optimizedDesiredState = desiredState
-        SwerveModuleState.optimize(optimizedDesiredState, Rotation2d(self.getAbsoluteRadians()))
+        SwerveModuleState.optimize(optimizedDesiredState, self.getAngle())
 
-        self.setAbsoluteRadiansGoal(optimizedDesiredState.angle.radians())
+        self.setAbsoluteRadiansGoal(optimizedDesiredState.angle.radians() + self.chassisAngularOffset)
         self.drivingRevPIDController.setReference(
             optimizedDesiredState.speed, SparkLowLevel.ControlType.kVelocity
         )
