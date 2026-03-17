@@ -5,7 +5,7 @@ from wpimath.kinematics import SwerveDrive4Kinematics
 from rev import SparkBaseConfig, FeedbackSensor
 
 class DriveConstants:
-    kMaxSpeedMetersPerSecond = 4.8
+    kMaxSpeedMetersPerSecond = 2  # 4.8
     kMaxAngularSpeed = 1.5 * math.tau
     kMagnitudeSlewRate = 9.8
     kRotationalSlewRate = 24.0

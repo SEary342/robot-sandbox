@@ -16,6 +16,11 @@ from photonlibpy.photonCamera import PhotonCamera
 from photonlibpy.photonPoseEstimator import PhotonPoseEstimator
 from robotpy_apriltag import AprilTagFieldLayout, AprilTagField
 
+# --- PathPlanner Imports ---
+from pathplannerlib.auto import AutoBuilder
+from pathplannerlib.config import RobotConfig, PIDConstants
+from pathplannerlib.controller import PPHolonomicDriveController
+
 import constants
 from .swervemodule import SwerveModule
 
@@ -24,7 +29,6 @@ class SwerveDriveSubsystem(Subsystem):
         super().__init__()
 
         # Create Swerve Modules
-        # Removed turnMotorInverted; this is now handled in the REV Hardware Client flash.
         self.frontLeft = SwerveModule(
             constants.DriveConstants.kFrontLeftDrivingCanId,
             constants.DriveConstants.kFrontLeftTurningCanId,
@@ -75,6 +79,12 @@ class SwerveDriveSubsystem(Subsystem):
         # Vision Setup
         self.setupVision()
 
+        # PathPlanner Setup
+        try:
+            self.configurePathPlanner()
+        except Exception as e:
+            print(f"PathPlanner Config Failed: {e}")
+
     def setupVision(self):
         try:
             self.camera = PhotonCamera(constants.kCamera1Name)
@@ -92,14 +102,35 @@ class SwerveDriveSubsystem(Subsystem):
             print(f"Swerve Vision Init Failed: {e}")
             self.photon_estimator = None
 
+    def configurePathPlanner(self):
+        """Configures PathPlanner for a holonomic (swerve) drivetrain."""
+        # This loads the 'robot_config.json' from your deploy directory
+        config = RobotConfig.fromGUISettings()
+
+        AutoBuilder.configure(
+            self.getPose,
+            self.resetOdometry,
+            self.getChassisSpeeds,
+            self.driveChassisSpeeds,
+            PPHolonomicDriveController(
+                PIDConstants(5.0, 0.0, 0.0), # Translation PID constants
+                PIDConstants(5.0, 0.0, 0.0)  # Rotation PID constants
+            ),
+            config,
+            self.shouldFlipPath,
+            self,
+        )
+
+    def shouldFlipPath(self) -> bool:
+        # Flip paths if we are on the Red Alliance
+        return DriverStation.getAlliance() == DriverStation.Alliance.kRed
+
     def periodic(self) -> None:
-        # Update pose estimator with encoders and gyro
         self.poseEstimator.update(
             self.getGyroHeading(),
             self.getModulePositions(),
         )
 
-        # Update pose estimator with vision
         if self.photon_estimator:
             for result in self.camera.getAllUnreadResults():
                 est = self.photon_estimator.estimateCoprocMultiTagPose(result)
@@ -118,6 +149,9 @@ class SwerveDriveSubsystem(Subsystem):
     def getPose(self) -> Pose2d:
         return self.poseEstimator.getEstimatedPosition()
 
+    def getGyroHeading(self) -> Rotation2d:
+        return Rotation2d.fromDegrees(self.gyro_yaw_entry.get() * constants.DriveConstants.kGyroReversed)
+
     def getModulePositions(self) -> typing.Tuple[SwerveModulePosition, SwerveModulePosition, SwerveModulePosition, SwerveModulePosition]:
         return (
             self.frontLeft.getPosition(),
@@ -125,6 +159,42 @@ class SwerveDriveSubsystem(Subsystem):
             self.rearLeft.getPosition(),
             self.rearRight.getPosition(),
         )
+
+    def getModuleStates(self) -> typing.Tuple[SwerveModuleState, SwerveModuleState, SwerveModuleState, SwerveModuleState]:
+        return (
+            self.frontLeft.getState(),
+            self.frontRight.getState(),
+            self.rearLeft.getState(),
+            self.rearRight.getState(),
+        )
+
+    def getChassisSpeeds(self) -> ChassisSpeeds:
+        """Returns the current chassis speeds measured by the swerve modules."""
+        # Removed the '*' - we pass the 4-tuple directly to the kinematics object
+        return constants.DriveConstants.kDriveKinematics.toChassisSpeeds(
+            self.getModuleStates()
+        )
+
+    def driveChassisSpeeds(self, speeds: ChassisSpeeds, feedforwards) -> None:
+        """
+        Drives the robot using ChassisSpeeds. 
+        Required for 2026 PathPlanner AutoBuilder.
+        """
+        # 1. Convert target ChassisSpeeds to individual module states
+        swerveModuleStates = constants.DriveConstants.kDriveKinematics.toSwerveModuleStates(speeds)
+        
+        # 2. Desaturate wheel speeds so no module exceeds its physical max speed.
+        # RobotPy returns these as a tuple, which we unpack.
+        fl, fr, rl, rr = SwerveDrive4Kinematics.desaturateWheelSpeeds(
+            swerveModuleStates, 
+            constants.DriveConstants.kMaxSpeedMetersPerSecond
+        )
+        
+        # 3. Apply states to the hardware
+        self.frontLeft.setDesiredState(fl)
+        self.frontRight.setDesiredState(fr)
+        self.rearLeft.setDesiredState(rl)
+        self.rearRight.setDesiredState(rr)
 
     def resetOdometry(self, pose: Pose2d) -> None:
         self.poseEstimator.resetPosition(
@@ -142,6 +212,7 @@ class SwerveDriveSubsystem(Subsystem):
         rateLimit: bool,
         square: bool = False
     ) -> None:
+        """Standard drive method used for teleop (joystick) control."""
         if square:
             xSpeed = xSpeed * abs(xSpeed)
             ySpeed = ySpeed * abs(ySpeed)
@@ -153,10 +224,11 @@ class SwerveDriveSubsystem(Subsystem):
 
         if fieldRelative:
             heading = self.getPose().rotation()
-            # Handle Red Alliance flipping if necessary
             if DriverStation.getAlliance() == DriverStation.Alliance.kRed:
                 heading = heading + Rotation2d.fromDegrees(180)
-            targetChassisSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(xSpeedGoal, ySpeedGoal, rotSpeedGoal, heading)
+            targetChassisSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(
+                xSpeedGoal, ySpeedGoal, rotSpeedGoal, heading
+            )
         else:
             targetChassisSpeeds = ChassisSpeeds(xSpeedGoal, ySpeedGoal, rotSpeedGoal)
 
@@ -166,25 +238,14 @@ class SwerveDriveSubsystem(Subsystem):
             targetChassisSpeeds.vy = slewedY
             targetChassisSpeeds.omega = self.rotLimiter.calculate(targetChassisSpeeds.omega)
 
-        swerveModuleStates = constants.DriveConstants.kDriveKinematics.toSwerveModuleStates(targetChassisSpeeds)
-        
-        # Desaturate wheel speeds
-        fl, fr, rl, rr = SwerveDrive4Kinematics.desaturateWheelSpeeds(swerveModuleStates, constants.DriveConstants.kMaxSpeedMetersPerSecond)
-
-        self.frontLeft.setDesiredState(fl)
-        self.frontRight.setDesiredState(fr)
-        self.rearLeft.setDesiredState(rl)
-        self.rearRight.setDesiredState(rr)
+        # We route through driveChassisSpeeds to keep the desaturation logic in one place
+        self.driveChassisSpeeds(targetChassisSpeeds, None)
 
     def setX(self) -> None:
         self.frontLeft.setDesiredState(SwerveModuleState(0, Rotation2d.fromDegrees(45)))
         self.frontRight.setDesiredState(SwerveModuleState(0, Rotation2d.fromDegrees(-45)))
         self.rearLeft.setDesiredState(SwerveModuleState(0, Rotation2d.fromDegrees(-45)))
         self.rearRight.setDesiredState(SwerveModuleState(0, Rotation2d.fromDegrees(45)))
-
-    def getGyroHeading(self) -> Rotation2d:
-        # SenseHat yaw is usually in degrees
-        return Rotation2d.fromDegrees(self.gyro_yaw_entry.get() * constants.DriveConstants.kGyroReversed)
 
     def stop(self):
         self.drive(0, 0, 0, False, False)
