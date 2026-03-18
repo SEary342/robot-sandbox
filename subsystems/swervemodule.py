@@ -17,11 +17,9 @@ class SwerveModule:
         # Turning motor setup
         self.turningRevMotor = SparkMax(turningCANId, SparkLowLevel.MotorType.kBrushless)
         
-        # WE DO NOT factory reset this motor. 
-        # This allows the Hardware Client settings (Offsets, PID, Inversion) to persist.
         self.turningRevMotor.configure(
             constants.getSwerveTurningMotorConfig(),
-            ResetMode.kNoResetSafeParameters, 
+            ResetMode.kResetSafeParameters, 
             PersistMode.kPersistParameters
         )
             

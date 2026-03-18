@@ -9,6 +9,7 @@ class DriveConstants:
     kMaxAngularSpeed = 1.5 * math.tau
     kMagnitudeSlewRate = 9.8
     kRotationalSlewRate = 24.0
+    kInvertDirection = 1 # -1 inverts because math
 
     kTrackWidth = units.inchesToMeters(26.5)
     kWheelBase = units.inchesToMeters(26.5)

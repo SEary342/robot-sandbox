@@ -8,6 +8,10 @@ kInputSlewRate = 2.0
 kLaunchMotorCurrentLimit = 40
 kDriveMotorCurrentLimit = 40
 
+class OIConstants:
+    kDriverControllerPort = 0
+    kDriveDeadband = 0.05
+
 # Import Shooter/Camera Constants (Common to both)
 from shooter_constants import *  # noqa: E402, F403
 
