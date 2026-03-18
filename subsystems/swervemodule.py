@@ -16,7 +16,6 @@ class SwerveModule:
 
         # Turning motor setup
         self.turningRevMotor = SparkMax(turningCANId, SparkLowLevel.MotorType.kBrushless)
-        
         self.turningRevMotor.configure(
             constants.getSwerveTurningMotorConfig(),
             ResetMode.kResetSafeParameters, 
