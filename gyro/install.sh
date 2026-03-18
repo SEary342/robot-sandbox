@@ -3,9 +3,19 @@
 # --- 1. Basic Setup & Dependencies ---
 echo "--- Installing System Dependencies ---"
 sudo apt-get update
-sudo apt-get install -y python3-pip python3-smbus i2c-tools python3-venv libatlas-base-dev
+sudo apt-get install -y i2c-tools libatlas-base-dev curl
 
-# --- 2. Enable I2C ---
+# --- 2. Install UV ---
+echo "--- Installing UV ---"
+if ! command -v uv &> /dev/null; then
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    # Ensure uv is in path for this session
+    export PATH="$HOME/.local/bin:$PATH"
+else
+    echo "UV already installed."
+fi
+
+# --- 3. Enable I2C ---
 echo "--- Enabling I2C ---"
 if ! grep -q "dtparam=i2c_arm=on" /boot/config.txt; then
     echo "dtparam=i2c_arm=on" | sudo tee -a /boot/config.txt
@@ -15,23 +25,17 @@ fi
 # Load i2c-dev module for the current session
 sudo modprobe i2c-dev
 
-# --- 3. Virtual Environment & Python Libraries ---
-echo "--- Setting up Virtual Environment ---"
+# --- 4. Virtual Environment & Python Libraries ---
+echo "--- Setting up Virtual Environment with UV ---"
 # Navigate to the script's directory
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 cd "$DIR"
 
-# Create venv if it doesn't exist
-if [ ! -d ".venv" ]; then
-    python3 -m venv .venv
-fi
+# Use UV to setup the environment with Python 3.13
+uv python install 3.13
+uv sync --python 3.13
 
-# Install required Python packages
-source .venv/bin/activate
-pip install --upgrade pip
-pip install robotpy[ntcore] smbus math
-
-# --- 4. User Setup (Match gyro.service) ---
+# --- 5. User Setup (Match gyro.service) ---
 # The service file expects a user named 'photon'
 TARGET_USER="photon"
 if ! id "$TARGET_USER" &>/dev/null; then
@@ -46,13 +50,14 @@ fi
 # Fix permissions for the current directory
 sudo chown -R $TARGET_USER:$TARGET_USER "$DIR"
 
-# --- 5. Systemd Service Setup ---
+# --- 6. Systemd Service Setup ---
 echo "--- Installing Systemd Service ---"
 SERVICE_FILE="gyro.service"
 
 if [ -f "$SERVICE_FILE" ]; then
     # Update WorkingDirectory and ExecStart in the service file to match actual paths
     sed -i "s|WorkingDirectory=.*|WorkingDirectory=$DIR|" "$SERVICE_FILE"
+    # UV sync creates .venv/bin/python
     sed -i "s|ExecStart=.*|ExecStart=$DIR/.venv/bin/python gyro_service.py|" "$SERVICE_FILE"
     
     # Copy to systemd folder
