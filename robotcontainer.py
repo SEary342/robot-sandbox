@@ -251,6 +251,10 @@ class RobotContainer:
         :returns: the command to run in autonomous
         """
         # Check if chosenAuto exists and has a selection
+        #return RunCommand(
+        #        lambda: self.robotDrive.drive(0, 0, 0.2, False, False),
+        #        self.robotDrive,
+        #    )
         if self.chosenAuto is not None:
             return self.chosenAuto.getSelected()
 
@@ -264,9 +268,9 @@ class RobotContainer:
         self.chosenAuto = None
 
         try:
-            self.chosenAuto = AutoBuilder.buildAutoChooser('path1')
-            if self.chosenAuto is not None:
-                wpilib.SmartDashboard.putData("Chosen Auto", self.chosenAuto)
+            self.chosenAuto = AutoBuilder.buildAutoChooser()
+            #if self.chosenAuto is not None:
+            wpilib.SmartDashboard.putData("Chosen Auto", self.chosenAuto)
         except Exception as e:
             wpilib.reportError(f"AutoBuilder failed: {e}")
 
