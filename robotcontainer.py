@@ -264,7 +264,7 @@ class RobotContainer:
         self.chosenAuto = None
 
         try:
-            self.chosenAuto = AutoBuilder.buildAutoChooser()
+            self.chosenAuto = AutoBuilder.buildAutoChooser('path1')
             if self.chosenAuto is not None:
                 wpilib.SmartDashboard.putData("Chosen Auto", self.chosenAuto)
         except Exception as e:
