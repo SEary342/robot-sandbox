@@ -55,6 +55,9 @@ class RobotContainer:
 
         # The driver's controller.
         self.driverController = CommandXboxController(constants.kDriverControllerPort)
+        
+        # The operator's controller (Port 1).
+        self.operatorController = CommandXboxController(1)
 
         # Put a number box on the dashboard for shooter tuning
         wpilib.SmartDashboard.putNumber("Shooter/TuningRPM", 3000)
@@ -143,9 +146,7 @@ class RobotContainer:
         Use this method to define your button->command mappings.
         """
 
-        # 'A' button: Eject fuel back out the intake (while held)
-        self.driverController.a().whileTrue(Eject(self.shooter))
-
+        # --- Drive Controls (Driver Only) ---
         # 'B' button: Toggles the drive mode between arcade and tank drive.
         self.driverController.b().onTrue(InstantCommand(self.toggle_drive_mode))
 
@@ -163,38 +164,43 @@ class RobotContainer:
             )
         )
 
-        # 'Y' button: Manual RPM tuning mode.
-        self.driverController.y().whileTrue(
-            RunCommand(
-                lambda: (
-                    self.shooter.setTargetRPM(
-                        wpilib.SmartDashboard.getNumber("Shooter/TuningRPM", 0)
+        # --- Shared Controls (Driver & Operator) ---
+        for controller in [self.driverController, self.operatorController]:
+            # 'A' button: Eject fuel back out the intake (while held)
+            controller.a().whileTrue(Eject(self.shooter))
+
+            # 'Y' button: Manual RPM tuning mode.
+            controller.y().whileTrue(
+                RunCommand(
+                    lambda: (
+                        self.shooter.setTargetRPM(
+                            wpilib.SmartDashboard.getNumber("Shooter/TuningRPM", 0)
+                        ),
+                        self.shooter.runOuttake(),
                     ),
-                    self.shooter.runOuttake(),
-                ),
-                self.shooter,
+                    self.shooter,
+                )
             )
-        )
 
-        # Right Bumper: Aim and shoot using the automated sequence.
-        self.driverController.rightBumper().whileTrue(
-            LaunchSequence(self.shooter, self.robotDrive)
-        )
-
-        # Left Bumper: Run intake.
-        (
-            self.driverController.leftBumper().and_(
-                self.driverController.rightBumper().not_()
+            # Right Bumper: Aim and shoot using the automated sequence.
+            controller.rightBumper().whileTrue(
+                LaunchSequence(self.shooter, self.robotDrive)
             )
-        ).whileTrue(
-            Intake(self.shooter)
-        )
 
-        # POV Up: Climb up the tower (while held)
-        self.driverController.povUp().whileTrue(ClimbUp(self.climber))
+            # Left Bumper: Run intake.
+            (
+                controller.leftBumper().and_(
+                    controller.rightBumper().not_()
+                )
+            ).whileTrue(
+                Intake(self.shooter)
+            )
 
-        # POV Down: Climb down (while held)
-        self.driverController.povDown().whileTrue(ClimbDown(self.climber))
+            # POV Up: Climb up the tower (while held)
+            controller.povUp().whileTrue(ClimbUp(self.climber))
+
+            # POV Down: Climb down (while held)
+            controller.povDown().whileTrue(ClimbDown(self.climber))
 
         fpvButton = self.driverController.button(XboxController.Button.kStart)
         return fpvButton
