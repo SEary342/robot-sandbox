@@ -40,46 +40,46 @@ class ShooterSubsystem(Subsystem):
         super().__init__()
 
         # Initialize the motor
-        self.shooterMotor = rev.SparkMax(
-            constants.kShooterMotorCAN, rev.SparkMax.MotorType.kBrushless
+        self.leftIntakeLauncher = rev.SparkMax(
+            constants.kLeftIntakeCAN, rev.SparkMax.MotorType.kBrushless
         )
-        self.intakeMotor = rev.SparkMax(
-            constants.kIntakeMotorCAN, rev.SparkMax.MotorType.kBrushless
+        self.rightIntakeLauncher = rev.SparkMax(
+            constants.kRightIntakeCAN, rev.SparkMax.MotorType.kBrushless
         )
-
-        # --- Configure Intake Motor ---
-        intake_config = rev.SparkBaseConfig()
-        intake_config.setIdleMode(rev.SparkBaseConfig.IdleMode.kCoast)
-        intake_config.smartCurrentLimit(constants.kLaunchMotorCurrentLimit)
-        intake_config.inverted(True)
-        self.intakeMotor.configure(
-            intake_config,
-            rev.ResetMode.kResetSafeParameters,
-            rev.PersistMode.kPersistParameters,
+        self.indexer = rev.SparkMax(
+            constants.kIndexerCAN, rev.SparkMax.MotorType.kBrushed
         )
 
-        # --- Configure Shooter Motor ---
-        config = rev.SparkBaseConfig()
-        config.setIdleMode(rev.SparkBaseConfig.IdleMode.kCoast)
-        config.smartCurrentLimit(constants.kLaunchMotorCurrentLimit)
-        config.closedLoop.pid(
-            constants.kShooterP, constants.kShooterI, constants.kShooterD
-        )
-        config.closedLoop.velocityFF(constants.kShooterFF)
-        config.closedLoop.outputRange(
-            constants.kShooterMinOutput, constants.kShooterMaxOutput
-        )
+        self.pidController = self.rightIntakeLauncher.getClosedLoopController()
 
-        self.shooterMotor.configure(
-            config,
-            rev.ResetMode.kResetSafeParameters,
-            rev.PersistMode.kPersistParameters,
-        )
+        feederConfig = rev.SparkMaxConfig()
+        feederConfig.smartCurrentLimit(constants.kIndexerCurrentLimit)
+        self.indexer.configure(feederConfig, rev.ResetMode.kResetSafeParameters, rev.PersistMode.kPersistParameters)
 
-        self.pidController = self.shooterMotor.getClosedLoopController()
-        self.encoder = self.shooterMotor.getEncoder()
+        launcherConfig = rev.SparkMaxConfig()
+        launcherConfig.smartCurrentLimit(constants.kLauncherCurrentLimit)
+        launcherConfig.voltageCompensation(12)
+        launcherConfig.setIdleMode(rev.SparkMaxConfig.IdleMode.kCoast)
+        
+        # PID coefficients
+        launcherConfig.closedLoop.pid(constants.kShooterP, constants.kShooterI, constants.kShooterD)
+        launcherConfig.closedLoop.velocityFF(constants.kShooterFF)
+        launcherConfig.closedLoop.outputRange(constants.kShooterMinOutput, constants.kShooterMaxOutput)
 
-        # Physics Calculator Instance
+        self.rightIntakeLauncher.configure(launcherConfig, rev.ResetMode.kResetSafeParameters, rev.PersistMode.kPersistParameters)
+        
+        # Left motor follows right motor, but inverted
+        leftConfig = rev.SparkMaxConfig()
+        leftConfig.apply(launcherConfig)
+        leftConfig.follow(self.rightIntakeLauncher, True)
+        self.leftIntakeLauncher.configure(leftConfig, rev.ResetMode.kResetSafeParameters, rev.PersistMode.kPersistParameters)
+
+        SmartDashboard.putNumber("Intaking feeder roller value", constants.FuelConstants.INDEXER_INTAKING_PERCENT)
+        SmartDashboard.putNumber("Intaking intake roller value", constants.FuelConstants.INTAKE_INTAKING_PERCENT)
+        SmartDashboard.putNumber("Launching feeder roller value", constants.FuelConstants.INDEXER_LAUNCHING_PERCENT)
+        SmartDashboard.putNumber("Launching launcher roller value", constants.FuelConstants.LAUNCHING_LAUNCHER_PERCENT)
+        SmartDashboard.putNumber("Launching spin-up feeder value", constants.FuelConstants.INDEXER_SPIN_UP_PRE_LAUNCH_PERCENT)
+
         self.physics_calc = LauncherPhysics(
             constants.kGoalHeightMeters,
             constants.kShooterHeightMeters,
@@ -87,9 +87,26 @@ class ShooterSubsystem(Subsystem):
             constants.kShooterWheelDiameterMeters,
             constants.kShooterRecoveryFactor,
         )
-
-        self.use_physics_model = False
+        self.use_physics_model = True
         self.targetRPM = 0.0
+
+    def setIntakeLauncherRoller(self, power: float):
+        self.leftIntakeLauncher.set(power)
+        self.rightIntakeLauncher.set(power)
+
+    def setFeederRoller(self, power: float):
+        self.indexer.set(power)
+
+    def runOuttake(self):
+        self.setFeederRoller(SmartDashboard.getNumber("Launching feeder roller value", constants.FuelConstants.INDEXER_LAUNCHING_PERCENT))
+
+    def stop(self):
+        self.indexer.stopMotor()
+        self.leftIntakeLauncher.stopMotor()
+        self.rightIntakeLauncher.stopMotor()
+
+    def periodic(self):
+        pass
 
     def toggleShooterLogic(self):
         """Switches between Interpolation and Physics models."""
@@ -110,47 +127,8 @@ class ShooterSubsystem(Subsystem):
 
         self.setTargetRPM(target_rpm)
 
-    def runIntake(self):
-        self.intakeMotor.set(constants.kIntakeSpeed)
-
-    def runOuttake(self):
-        self.intakeMotor.set(constants.kOuttakeSpeed)
-
-    def stopIntake(self):
-        self.intakeMotor.stopMotor()
-
     def setTargetRPM(self, rpm: float):
         self.targetRPM = rpm
         self.pidController.setReference(
             self.targetRPM, rev.SparkBase.ControlType.kVelocity
         )
-
-    def stop(self):
-        self.targetRPM = 0.0
-        self.shooterMotor.stopMotor()
-        self.intakeMotor.stopMotor()
-
-    def ready_to_fire(self) -> str:
-        """
-        Returns an empty string if ready to fire, or a reason why it's not ready.
-        Useful for driver feedback on the dashboard.
-        """
-        if self.targetRPM <= 0:
-            return "No target RPM set"
-            
-        current_rpm = self.encoder.getVelocity()
-        if current_rpm < self.targetRPM - constants.kShooterToleranceRPM:
-            return f"Under speed: {current_rpm:.0f} < {self.targetRPM:.0f}"
-        if current_rpm > self.targetRPM + constants.kShooterToleranceRPM:
-            return f"Over speed: {current_rpm:.0f} > {self.targetRPM:.0f}"
-            
-        return "" # Ready!
-
-    def isAtSpeed(self) -> bool:
-        return self.ready_to_fire() == ""
-
-    def periodic(self):
-        SmartDashboard.putNumber("Shooter/TargetRPM", self.targetRPM)
-        SmartDashboard.putNumber("Shooter/CurrentRPM", self.encoder.getVelocity())
-        SmartDashboard.putBoolean("Shooter/AtSpeed", self.isAtSpeed())
-        SmartDashboard.putString("Shooter/Status", self.ready_to_fire())

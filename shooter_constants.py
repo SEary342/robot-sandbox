@@ -2,10 +2,12 @@ import math
 import numpy as np
 from typing import Dict
 
+
 class LookupTable:
     """
     Allows you to lookup points in a pre-calibrated table, using linear interpolation.
     """
+
     def __init__(self, points: Dict[float, float]):
         sorted_points = sorted(points.items())
         self.x = np.array([x for x, y in sorted_points], dtype=np.float32)
@@ -14,10 +16,27 @@ class LookupTable:
     def interpolate(self, x: float):
         return float(np.interp(x, self.x, self.y))
 
+
+class FuelConstants:
+    INDEXER_INTAKING_PERCENT = -0.8
+    INDEXER_LAUNCHING_PERCENT = 0.6
+    INDEXER_SPIN_UP_PRE_LAUNCH_PERCENT = -0.5
+
+    INTAKE_INTAKING_PERCENT = 0.6
+    LAUNCHING_LAUNCHER_PERCENT = 0.85
+    INTAKE_EJECT_PERCENT = -0.8
+
+    SPIN_UP_SECONDS = 0.75
+
+
 # Shooter Constants
 # TODO these need to be changed on the robot to not collide with swerve CAN ids
-kShooterMotorCAN = 16
-kIntakeMotorCAN = 14
+kRightIntakeCAN = 14
+kLeftIntakeCAN = 15
+kIndexerCAN = 13
+
+kIndexerCurrentLimit = 80
+kLauncherCurrentLimit = 80
 
 kIntakeSpeed = -1
 kOuttakeSpeed = 0.5
@@ -45,14 +64,16 @@ kShooterMinRange = 1.0
 kShooterMaxRange = 6.5
 
 # Experimental Data: Distance (meters) -> Speed (RPM)
-kShooterDistanceToRPM = LookupTable({
-    1.5: 2500,
-    2.0: 2800,
-    3.0: 3500,
-    4.0: 4200,
-    5.0: 4800,
-    6.0: 5500,
-})
+kShooterDistanceToRPM = LookupTable(
+    {
+        1.5: 2500,
+        2.0: 2800,
+        3.0: 3500,
+        4.0: 4200,
+        5.0: 4800,
+        6.0: 5500,
+    }
+)
 
 redTargets = (9, 10)
 blueTargets = (25, 26)
