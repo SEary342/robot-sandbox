@@ -31,9 +31,9 @@ class FuelConstants:
 
 # Shooter Constants
 # TODO these need to be changed on the robot to not collide with swerve CAN ids
-kRightIntakeCAN = 14
-kLeftIntakeCAN = 15
-kIndexerCAN = 13
+kRightIntakeCAN = 16
+kLeftIntakeCAN = 14
+kIndexerCAN = 18
 
 kIndexerCurrentLimit = 80
 kLauncherCurrentLimit = 80
