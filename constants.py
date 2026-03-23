@@ -1,5 +1,5 @@
 # Toggle this to switch between Tank and Swerve drivetrain code/IDs
-kSwerveInstalled = True
+kSwerveInstalled = False
 
 # Common Constants
 kDriverControllerPort = 0
