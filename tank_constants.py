@@ -27,7 +27,7 @@ kEncoderPositionConversionFactor = 0.7
 kGyroReversed = -1  # make this +1 if not inverted
 
 class DrivetrainConstants:
-    initialP = 2.5 / 10000.0
+    initialP = 1.5 / 10000.0
     initialD = 5.0 / 10000.0
     initialFF = 1.4 / 10000.0
     maxRPM = 3000
