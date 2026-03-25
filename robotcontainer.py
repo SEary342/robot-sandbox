@@ -52,6 +52,7 @@ class RobotContainer:
 
         self.is_tank_drive = False
         self.field_relative = True  # Default for swerve
+        self.drive_multiplier = 1.0  # 1.0 for forward, -1.0 for inverted
 
         # The driver's controller.
         self.driverController = CommandXboxController(constants.kDriverControllerPort)
@@ -61,6 +62,7 @@ class RobotContainer:
 
         # Put a number box on the dashboard for shooter tuning
         wpilib.SmartDashboard.putNumber("Shooter/TuningRPM", 3000)
+        wpilib.SmartDashboard.putBoolean("Drive Inverted", False)
 
         # --- 2. Configure Controls (Buttons) ---
         # Configure the button bindings
@@ -75,10 +77,12 @@ class RobotContainer:
                     forwardSpeed=lambda: (
                         -self.driverController.getRawAxis(XboxController.Axis.kLeftY)
                         * swerve_constants.DriveConstants.kInvertDirection
+                        * self.drive_multiplier
                     ),
                     leftSpeed=lambda: (
                         -self.driverController.getRawAxis(XboxController.Axis.kLeftX)
                         * swerve_constants.DriveConstants.kInvertDirection
+                        * self.drive_multiplier
                     ),
                     rotationSpeed=lambda: (
                         -0.7
@@ -97,17 +101,17 @@ class RobotContainer:
                         self.robotDrive.tankDrive(
                             -self.driverController.getRawAxis(
                                 XboxController.Axis.kLeftY
-                            ),
+                            ) * self.drive_multiplier,
                             -self.driverController.getRawAxis(
                                 XboxController.Axis.kRightY
-                            ),
+                            ) * self.drive_multiplier,
                             assumeManualInput=True,
                         )
                         if self.is_tank_drive
                         else self.robotDrive.arcadeDrive(
                             -self.driverController.getRawAxis(
                                 XboxController.Axis.kLeftY
-                            ),
+                            ) * self.drive_multiplier,
                             -self.driverController.getRawAxis(
                                 XboxController.Axis.kLeftX
                             ),
@@ -141,6 +145,11 @@ class RobotContainer:
             self.is_tank_drive = not self.is_tank_drive
             wpilib.SmartDashboard.putBoolean("Tank Drive Active", self.is_tank_drive)
 
+    def toggle_drive_direction(self):
+        """Inverts the front/back direction of the robot controls."""
+        self.drive_multiplier *= -1.0
+        wpilib.SmartDashboard.putBoolean("Drive Inverted", self.drive_multiplier < 0)
+
     def configureButtonBindings(self):
         """
         Use this method to define your button->command mappings.
@@ -149,6 +158,9 @@ class RobotContainer:
         # --- Drive Controls (Driver Only) ---
         # 'B' button: Toggles the drive mode between arcade and tank drive.
         self.driverController.b().onTrue(InstantCommand(self.toggle_drive_mode))
+
+        # 'Back' button: Inverts the driving direction
+        self.driverController.back().onTrue(InstantCommand(self.toggle_drive_direction))
 
         # 'X' button: Aim at the speaker target.
         self.driverController.x().whileTrue(

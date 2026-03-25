@@ -319,23 +319,35 @@ class DriveSubsystem(Subsystem):
         """Returns the current chassis speeds of the robot."""
         return tank_constants.kDriveKinematics.toChassisSpeeds(self.getWheelSpeeds())
 
-    def driveChassisSpeeds(self, speeds: ChassisSpeeds, feedforwards):
-        """Drives the robot with the given chassis speeds."""
+    def driveChassisSpeeds(self, speeds: ChassisSpeeds, feedforwards) -> None:
+        """
+        Drives the robot using ChassisSpeeds. 
+        Adapted from the 2026 Swerve pattern for Tank Drive.
+        """
+        # 1. Convert target ChassisSpeeds to individual wheel speeds (Left/Right)
+        # This replaces the .toSwerveModuleStates() call
         wheelSpeeds = tank_constants.kDriveKinematics.toWheelSpeeds(speeds)
+        
+        # 2. Desaturate wheel speeds so no motor exceeds its physical max speed.
+        # This is the Tank version of desaturateWheelSpeeds.
+        wheelSpeeds.desaturate(tank_constants.kDriveSpeedAtMaxRPM)
+        
+        # 3. Convert target speeds (m/s) to RPM for SparkMax
+        # (Velocity in m/s * 60) / (pi * Wheel Diameter)
+        conversion_factor = 60 / (math.pi * tank_constants.kWheelDiameterMeters)
+        self.desiredLeftVelocity = wheelSpeeds.left * conversion_factor
+        self.desiredRightVelocity = wheelSpeeds.right * conversion_factor
 
-        self.desiredLeftVelocity = (
-            wheelSpeeds.left * 60 / (math.pi * tank_constants.kWheelDiameterMeters)
-        )
-        self.desiredRightVelocity = (
-            wheelSpeeds.right * 60 / (math.pi * tank_constants.kWheelDiameterMeters)
-        )
+        # 4. Handle Feedforwards (Safely check attribute names)
+        # PathPlanner 2026 uses 'leftFeedforward' and 'rightFeedforward'
+        leftFF_volts = getattr(feedforwards, "leftFeedforward", 0.0)
+        rightFF_volts = getattr(feedforwards, "rightFeedforward", 0.0)
+        
+        # Convert Volts to -1.0 to 1.0 for arbFeedforward
+        leftFF = leftFF_volts / 12.0
+        rightFF = rightFF_volts / 12.0
 
-        # PathPlanner provides feedforwards in Volts.
-        # SparkMax arbFeedforward expects -1 to 1 (Duty Cycle).
-        # We divide by 12.0 to convert.
-        leftFF = feedforwards.leftFeedforwards / 12.0
-        rightFF = feedforwards.rightFeedforwards / 12.0
-
+        # 5. Apply to hardware (Closed-loop velocity control)
         self.leftPIDController.setReference(
             self.desiredLeftVelocity,
             rev.SparkBase.ControlType.kVelocity,

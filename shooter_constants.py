@@ -18,9 +18,9 @@ class LookupTable:
 
 
 class FuelConstants:
-    INDEXER_INTAKING_PERCENT = -0.8
-    INDEXER_LAUNCHING_PERCENT = 0.6
-    INDEXER_SPIN_UP_PRE_LAUNCH_PERCENT = -0.5
+    INDEXER_INTAKING_PERCENT = 0.4
+    INDEXER_LAUNCHING_PERCENT = -0.3
+    INDEXER_SPIN_UP_PRE_LAUNCH_PERCENT = 0.5
 
     INTAKE_INTAKING_PERCENT = 0.6
     LAUNCHING_LAUNCHER_PERCENT = 0.85
@@ -31,8 +31,8 @@ class FuelConstants:
 
 # Shooter Constants
 # TODO these need to be changed on the robot to not collide with swerve CAN ids
-kRightIntakeCAN = 4
-kLeftIntakeCAN = 6
+kRightIntakeCAN = 6
+kLeftIntakeCAN = 5
 kIndexerCAN = 8
 
 kIndexerCurrentLimit = 80

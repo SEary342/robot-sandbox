@@ -2,10 +2,10 @@
 from wpimath.kinematics import DifferentialDriveKinematics
 
 # The CAN IDs for the drivetrain motor controllers.
-kLeftMotor1CAN = 7
-kLeftMotor2CAN = 2
-kRightMotor1CAN = 3
-kRightMotor2CAN = 5
+kLeftMotor1CAN = 3
+kLeftMotor2CAN = 4
+kRightMotor1CAN = 1
+kRightMotor2CAN = 2
 
 # Encoders and their respective motor controllers.
 kLeftEncoderSign = +1

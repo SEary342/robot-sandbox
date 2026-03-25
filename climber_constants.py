@@ -1,5 +1,5 @@
 # Climber Constants
-kClimberCAN = 17
+kClimberCAN = 10
 kClimberCurrentLimit = 40
 
 # Percentage to power the motor both up and down

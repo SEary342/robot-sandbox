@@ -54,6 +54,7 @@ class ShooterSubsystem(Subsystem):
 
         feederConfig = rev.SparkMaxConfig()
         feederConfig.smartCurrentLimit(constants.kIndexerCurrentLimit)
+        feederConfig.inverted(True)
         self.indexer.configure(feederConfig, rev.ResetMode.kResetSafeParameters, rev.PersistMode.kPersistParameters)
 
         launcherConfig = rev.SparkMaxConfig()

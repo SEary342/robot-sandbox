@@ -7,7 +7,7 @@ class ClimberSubsystem(Subsystem):
         super().__init__()
         
         # create brushed motor for climber
-        self.climberMotor = rev.SparkMax(constants.kClimberCAN, rev.SparkMax.MotorType.kBrushed)
+        self.climberMotor = rev.SparkMax(constants.kClimberCAN, rev.SparkMax.MotorType.kBrushless)
         
         # create the configuration for the climb motor
         climbConfig = rev.SparkMaxConfig()
