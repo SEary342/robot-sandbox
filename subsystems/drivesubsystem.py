@@ -31,15 +31,6 @@ import tank_constants
 import rev
 
 
-class DrivetrainConstants:
-    initialP = 2.5 / 10000.0
-    initialD = (
-        5.0 / 10000.0
-    )  # coincidentally same as initialP, but really does not need to be
-    initialFF = 1.4 / 10000.0  # if setting it to nonzero, be careful and start small
-    maxRPM = 3000
-
-
 class DriveSubsystem(Subsystem):
     # noinspection PyInterpreter
     def __init__(
@@ -168,7 +159,6 @@ class DriveSubsystem(Subsystem):
             self.rightEncoder.getPosition() * tank_constants.kRightEncoderSign,
             Pose2d(),
         )
-
 
         self.field = Field2d()
         SmartDashboard.putData("Field", self.field)
@@ -321,17 +311,17 @@ class DriveSubsystem(Subsystem):
 
     def driveChassisSpeeds(self, speeds: ChassisSpeeds, feedforwards) -> None:
         """
-        Drives the robot using ChassisSpeeds. 
+        Drives the robot using ChassisSpeeds.
         Adapted from the 2026 Swerve pattern for Tank Drive.
         """
         # 1. Convert target ChassisSpeeds to individual wheel speeds (Left/Right)
         # This replaces the .toSwerveModuleStates() call
         wheelSpeeds = tank_constants.kDriveKinematics.toWheelSpeeds(speeds)
-        
+
         # 2. Desaturate wheel speeds so no motor exceeds its physical max speed.
         # This is the Tank version of desaturateWheelSpeeds.
         wheelSpeeds.desaturate(tank_constants.kDriveSpeedAtMaxRPM)
-        
+
         # 3. Convert target speeds (m/s) to RPM for SparkMax
         # (Velocity in m/s * 60) / (pi * Wheel Diameter)
         conversion_factor = 60 / (math.pi * tank_constants.kWheelDiameterMeters)
@@ -342,7 +332,7 @@ class DriveSubsystem(Subsystem):
         # PathPlanner 2026 uses 'leftFeedforward' and 'rightFeedforward'
         leftFF_volts = getattr(feedforwards, "leftFeedforward", 0.0)
         rightFF_volts = getattr(feedforwards, "rightFeedforward", 0.0)
-        
+
         # Convert Volts to -1.0 to 1.0 for arbFeedforward
         leftFF = leftFF_volts / 12.0
         rightFF = rightFF_volts / 12.0
@@ -380,7 +370,7 @@ class DriveSubsystem(Subsystem):
             # This helps the driver make small adjustments without jerking the robot.
             fwd = fwd * fwd * fwd
             rot = rot * abs(rot)
-            
+
             # Apply slew rate limiting to smooth acceleration
             fwd = self.filterFwd.calculate(fwd)
             rot = self.filterRot.calculate(rot)
@@ -402,8 +392,12 @@ class DriveSubsystem(Subsystem):
 
         # Calculate target RPM for each side
         # Left = Forward - Turn, Right = Forward + Turn
-        self.desiredRightVelocity = (fwd + rot) * tank_constants.DrivetrainConstants.maxRPM
-        self.desiredLeftVelocity = (fwd - rot) * tank_constants.DrivetrainConstants.maxRPM
+        self.desiredRightVelocity = (
+            fwd + rot
+        ) * tank_constants.DrivetrainConstants.maxRPM
+        self.desiredLeftVelocity = (
+            fwd - rot
+        ) * tank_constants.DrivetrainConstants.maxRPM
 
         if self.diffDrive:
             # use basic DifferentialDrive and don't take advantage of low-level Rev PID controller
@@ -425,13 +419,13 @@ class DriveSubsystem(Subsystem):
             # Cubing the input (x^3) makes the joystick less sensitive near the center.
             leftSpeed = leftSpeed * leftSpeed * leftSpeed
             rightSpeed = rightSpeed * rightSpeed * rightSpeed
-            
+
             # Apply slew rate limiting to smooth acceleration
             leftSpeed = self.filterLeft.calculate(leftSpeed)
             rightSpeed = self.filterRight.calculate(rightSpeed)
 
-        self.desiredLeftVelocity = leftSpeed * DrivetrainConstants.maxRPM
-        self.desiredRightVelocity = rightSpeed * DrivetrainConstants.maxRPM
+        self.desiredLeftVelocity = leftSpeed * constants.DrivetrainConstants.maxRPM
+        self.desiredRightVelocity = rightSpeed * constants.DrivetrainConstants.maxRPM
 
         if self.diffDrive:
             # use basic DifferentialDrive and don't take advantage of low-level Rev PID controller
@@ -537,17 +531,22 @@ class DriveSubsystem(Subsystem):
         for tag_id in tag_ids:
             tag_pose = self.field_layout.getTagPose(tag_id)
             if tag_pose is not None:
-                dist = self.getPose().translation().distance(tag_pose.toPose2d().translation())
+                dist = (
+                    self.getPose()
+                    .translation()
+                    .distance(tag_pose.toPose2d().translation())
+                )
                 if dist < min_dist:
                     min_dist = dist
                     closest_tag_pose = tag_pose
 
         if closest_tag_pose:
-            vector = closest_tag_pose.toPose2d().translation() - self.getPose().translation()
+            vector = (
+                closest_tag_pose.toPose2d().translation() - self.getPose().translation()
+            )
             return vector.angle()
 
         return self.getPose().rotation()
-
 
 
 def _getFollowMotorConfig(leadCanID, inverted):
@@ -589,7 +588,9 @@ def _getLeadMotorConfig(
 
     # Setup PID (The math that keeps speed constant)
     config.closedLoop.pid(
-        tank_constants.DrivetrainConstants.initialP, 0.0, tank_constants.DrivetrainConstants.initialD
+        tank_constants.DrivetrainConstants.initialP,
+        0.0,
+        tank_constants.DrivetrainConstants.initialD,
     )
     config.closedLoop.velocityFF(tank_constants.DrivetrainConstants.initialFF)
     config.closedLoop.outputRange(-1, +1)
@@ -618,7 +619,9 @@ class BadSimPhysics(object):
         dt = self.t - past
         if self.robot.isEnabled():
             drivetrain = self.drivetrain
-            toDriveSpeed = tank_constants.kDriveSpeedAtMaxRPM / DrivetrainConstants.maxRPM
+            toDriveSpeed = (
+                tank_constants.kDriveSpeedAtMaxRPM / constants.DrivetrainConstants.maxRPM
+            )
 
             states = DifferentialDriveWheelSpeeds(
                 left=drivetrain.desiredLeftVelocity * toDriveSpeed,
