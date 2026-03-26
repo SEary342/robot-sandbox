@@ -1,23 +1,35 @@
 import rev
+from wpilib import SmartDashboard
 from commands2 import Subsystem
 import constants
+
 
 class ClimberSubsystem(Subsystem):
     def __init__(self):
         super().__init__()
-        
+
         # create brushed motor for climber
-        self.climberMotor = rev.SparkMax(constants.kClimberCAN, rev.SparkMax.MotorType.kBrushless)
-        
+        self.climberMotor = rev.SparkMax(
+            constants.kClimberCAN, rev.SparkMax.MotorType.kBrushless
+        )
+
         # create the configuration for the climb motor
         climbConfig = rev.SparkMaxConfig()
         climbConfig.smartCurrentLimit(constants.kClimberCurrentLimit)
         climbConfig.setIdleMode(rev.SparkMaxConfig.IdleMode.kBrake)
-        
+
+        # Configure software limits
+        climbConfig.softLimit.forwardSoftLimitEnabled(True).forwardSoftLimit(
+            constants.kClimberForwardSoftLimit
+        )
+        climbConfig.softLimit.reverseSoftLimitEnabled(True).reverseSoftLimit(
+            constants.kClimberReverseSoftLimit
+        )
+
         self.climberMotor.configure(
-            climbConfig, 
-            rev.ResetMode.kResetSafeParameters, 
-            rev.PersistMode.kPersistParameters
+            climbConfig,
+            rev.ResetMode.kResetSafeParameters,
+            rev.PersistMode.kPersistParameters,
         )
 
     def setClimber(self, power: float):
@@ -29,4 +41,6 @@ class ClimberSubsystem(Subsystem):
         self.climberMotor.set(0)
 
     def periodic(self):
-        pass
+        SmartDashboard.putNumber(
+            "Climber/Position", self.climberMotor.getEncoder().getPosition()
+        )

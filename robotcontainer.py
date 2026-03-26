@@ -209,10 +209,10 @@ class RobotContainer:
             )
 
             # POV Up: Climb up the tower (while held)
-            controller.povUp().whileTrue(ClimbUp(self.climber))
+            controller.povDown().whileTrue(ClimbUp(self.climber))
 
             # POV Down: Climb down (while held)
-            controller.povDown().whileTrue(ClimbDown(self.climber))
+            controller.povUp().whileTrue(ClimbDown(self.climber))
 
         fpvButton = self.driverController.button(XboxController.Button.kStart)
         return fpvButton
