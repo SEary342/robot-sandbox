@@ -74,6 +74,7 @@ kShooterDistanceToRPM = LookupTable(
 
 redTargets = (9, 10)
 blueTargets = (25, 26)
+targets = (9, 10, 26, 25)
 
 # Camera Constants
 kCameraOffsetX = 0.2

@@ -56,7 +56,7 @@ class RobotContainer:
 
         # The driver's controller.
         self.driverController = CommandXboxController(constants.kDriverControllerPort)
-        
+
         # The operator's controller (Port 1).
         self.operatorController = CommandXboxController(1)
 
@@ -101,17 +101,20 @@ class RobotContainer:
                         self.robotDrive.tankDrive(
                             -self.driverController.getRawAxis(
                                 XboxController.Axis.kLeftY
-                            ) * self.drive_multiplier,
+                            )
+                            * self.drive_multiplier,
                             -self.driverController.getRawAxis(
                                 XboxController.Axis.kRightY
-                            ) * self.drive_multiplier,
+                            )
+                            * self.drive_multiplier,
                             assumeManualInput=True,
                         )
                         if self.is_tank_drive
                         else self.robotDrive.arcadeDrive(
                             -self.driverController.getRawAxis(
                                 XboxController.Axis.kLeftY
-                            ) * self.drive_multiplier,
+                            )
+                            * self.drive_multiplier,
                             -self.driverController.getRawAxis(
                                 XboxController.Axis.kLeftX
                             ),
@@ -165,13 +168,7 @@ class RobotContainer:
         # 'X' button: Aim at the speaker target.
         self.driverController.x().whileTrue(
             commands2.DeferredCommand(
-                lambda: AimAtTarget(
-                    self.robotDrive,
-                    constants.blueTargets
-                    if wpilib.DriverStation.getAlliance()
-                    == wpilib.DriverStation.Alliance.kBlue
-                    else constants.redTargets,
-                ),
+                lambda: AimAtTarget(self.robotDrive, constants.targets),
                 self.robotDrive,
             )
         )
@@ -200,11 +197,7 @@ class RobotContainer:
             )
 
             # Left Bumper: Run intake.
-            (
-                controller.leftBumper().and_(
-                    controller.rightBumper().not_()
-                )
-            ).whileTrue(
+            (controller.leftBumper().and_(controller.rightBumper().not_())).whileTrue(
                 Intake(self.shooter)
             )
 
