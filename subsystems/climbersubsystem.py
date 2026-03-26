@@ -19,10 +19,10 @@ class ClimberSubsystem(Subsystem):
         climbConfig.setIdleMode(rev.SparkMaxConfig.IdleMode.kBrake)
 
         # Configure software limits
-        climbConfig.softLimit.forwardSoftLimitEnabled(True).forwardSoftLimit(
+        climbConfig.softLimit.forwardSoftLimitEnabled(constants.kEnableLimit).forwardSoftLimit(
             constants.kClimberForwardSoftLimit
         )
-        climbConfig.softLimit.reverseSoftLimitEnabled(True).reverseSoftLimit(
+        climbConfig.softLimit.reverseSoftLimitEnabled(constants.kEnableLimit).reverseSoftLimit(
             constants.kClimberReverseSoftLimit
         )
 
