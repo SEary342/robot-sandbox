@@ -229,6 +229,10 @@ class RobotContainer:
             # Register Named Commands for use in PathPlanner
             NamedCommands.registerCommand("Intake", Intake(self.shooter))
             NamedCommands.registerCommand("Shoot", LaunchSequence(self.shooter, self.robotDrive))
+            NamedCommands.registerCommand("Eject", Eject(self.shooter))
+            NamedCommands.registerCommand("ClimbUp", ClimbUp(self.climber))
+            NamedCommands.registerCommand("ClimbDown", ClimbDown(self.climber))
+            NamedCommands.registerCommand("AimAtTarget", AimAtTarget(self.robotDrive, constants.targets))
 
             self.chosenAuto = AutoBuilder.buildAutoChooser()
             wpilib.SmartDashboard.putData("Chosen Auto", self.chosenAuto)
