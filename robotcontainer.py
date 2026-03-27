@@ -16,7 +16,7 @@ import commands2
 from commands2 import InstantCommand, RunCommand
 from commands2.button import CommandXboxController
 
-from pathplannerlib.auto import AutoBuilder
+from pathplannerlib.auto import AutoBuilder, NamedCommands
 from subsystems.drivesubsystem import DriveSubsystem, BadSimPhysics
 from subsystems.swervedrivesubsystem import SwerveDriveSubsystem
 from subsystems.shootersubsystem import ShooterSubsystem
@@ -190,7 +190,6 @@ class RobotContainer:
                     self.shooter,
                 )
             )
-
             # Right Bumper: Aim and shoot using the automated sequence.
             controller.rightBumper().whileTrue(
                 LaunchSequence(self.shooter, self.robotDrive)
@@ -227,6 +226,10 @@ class RobotContainer:
     def configureAutos(self):
         self.chosenAuto = None
         try:
+            # Register Named Commands for use in PathPlanner
+            NamedCommands.registerCommand("Intake", Intake(self.shooter))
+            NamedCommands.registerCommand("Shoot", LaunchSequence(self.shooter, self.robotDrive))
+
             self.chosenAuto = AutoBuilder.buildAutoChooser()
             wpilib.SmartDashboard.putData("Chosen Auto", self.chosenAuto)
         except Exception as e:
