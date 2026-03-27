@@ -6,22 +6,28 @@ import constants
 
 
 class LaunchSequence(SequentialCommandGroup):
-    """
-    A command that spins up the shooter based on distance to the speaker
-    and then launches the fuel.
-    """
-
-    def __init__(self, shooter: ShooterSubsystem, drivetrain):
+    def __init__(self, shooter: ShooterSubsystem, drivetrain, rpm_override = None):
         super().__init__()
 
-        def get_distance_to_speaker() -> float:
+        # Logic to decide which RPM to use
+        def get_target_rpm() -> float:
+            if rpm_override is not None:
+                return rpm_override
+            
+            # Fallback to distance calculation if no override
             target_tags = constants.targets
-            # Both DriveSubsystem and SwerveDriveSubsystem implement this method
-            return drivetrain.getDistanceToClosestTagInList(target_tags)
+            distance = drivetrain.getDistanceToClosestTagInList(target_tags)
+            # You might need a helper in ShooterSubsystem to return the 
+            # calculated RPM without setting it immediately, 
+            # but for a simple override, we can just use the float.
+            return 5000.0 # Your current hardcoded default
 
         self.addCommands(
-            SpinUp(shooter, get_distance_to_speaker).withTimeout(
+            # Pass the logic into the commands
+            # Note: You'll need to update SpinUp/Launch to accept a 
+            # lambda/callable for RPM if they don't already.
+            SpinUp(shooter, get_target_rpm, rpm_override).withTimeout(
                 constants.FuelConstants.SPIN_UP_SECONDS
             ),
-            Launch(shooter, get_distance_to_speaker),
+            Launch(shooter, get_target_rpm),
         )

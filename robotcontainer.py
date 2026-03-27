@@ -216,6 +216,7 @@ class RobotContainer:
         """
         :returns: the command to run in autonomous
         """
+        return LaunchSequence(self.shooter, self.robotDrive, 3500.0)
         if self.chosenAuto is not None:
             return self.chosenAuto.getSelected()
 

@@ -4,15 +4,24 @@ from subsystems.shootersubsystem import ShooterSubsystem
 from wpilib import SmartDashboard
 import constants
 
+
 class SpinUp(Command):
-    def __init__(self, shooter: ShooterSubsystem, distance_supplier: Optional[Callable[[], float]] = None):
+    def __init__(
+        self,
+        shooter: ShooterSubsystem,
+        distance_supplier: Optional[Callable[[], float]] = None,
+        rpm_override: Optional[float] = None,
+    ):
         super().__init__()
         self.shooter = shooter
         self.distance_supplier = distance_supplier
+        self.rpm_override = rpm_override
         self.addRequirements(self.shooter)
 
     def initialize(self):
-        if self.distance_supplier is not None:
+        if self.rpm_override is not None:
+            self.shooter.setTargetRPM(self.rpm_override)
+        elif self.distance_supplier is not None:
             distance = self.distance_supplier()
             # If no target found (distance 0 or None), use a safe fallback distance (e.g. subwoofer shot)
             if not distance:
@@ -20,15 +29,21 @@ class SpinUp(Command):
             self.shooter.setSpeedFromDistance(distance)
         else:
             # Fallback to fixed percent if no distance supplier
-            # Note: ShooterSubsystem uses PID for RPM, so setting percent power 
-            # might conflict if we don't switch modes. 
+            # Note: ShooterSubsystem uses PID for RPM, so setting percent power
+            # might conflict if we don't switch modes.
             # But the Java code uses fixed percent.
             self.shooter.setIntakeLauncherRoller(
-                SmartDashboard.getNumber("Launching launcher roller value", constants.FuelConstants.LAUNCHING_LAUNCHER_PERCENT)
+                SmartDashboard.getNumber(
+                    "Launching launcher roller value",
+                    constants.FuelConstants.LAUNCHING_LAUNCHER_PERCENT,
+                )
             )
-        
+
         self.shooter.setFeederRoller(
-            SmartDashboard.getNumber("Launching spin-up feeder value", constants.FuelConstants.INDEXER_SPIN_UP_PRE_LAUNCH_PERCENT)
+            SmartDashboard.getNumber(
+                "Launching spin-up feeder value",
+                constants.FuelConstants.INDEXER_SPIN_UP_PRE_LAUNCH_PERCENT,
+            )
         )
 
     def execute(self):
