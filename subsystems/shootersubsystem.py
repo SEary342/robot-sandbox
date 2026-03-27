@@ -47,7 +47,7 @@ class ShooterSubsystem(Subsystem):
             constants.kRightIntakeCAN, rev.SparkMax.MotorType.kBrushless
         )
         self.indexer = rev.SparkMax(
-            constants.kIndexerCAN, rev.SparkMax.MotorType.kBrushed
+            constants.kIndexerCAN, rev.SparkMax.MotorType.kBrushless
         )
 
         self.pidController = self.rightIntakeLauncher.getClosedLoopController()
