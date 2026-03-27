@@ -16,7 +16,7 @@ class Launch(Command):
             distance = self.distance_supplier()
             # If no target found (distance 0 or None), use a safe fallback distance (e.g. subwoofer shot)
             if not distance:
-                distance = 1.5
+                distance = 3.5
             self.shooter.setSpeedFromDistance(distance)
         else:
             self.shooter.setIntakeLauncherRoller(

@@ -19,7 +19,7 @@ class LookupTable:
 
 class FuelConstants:
     INDEXER_INTAKING_PERCENT = 0.8
-    INDEXER_LAUNCHING_PERCENT = -0.6
+    INDEXER_LAUNCHING_PERCENT = -0.8
     INDEXER_SPIN_UP_PRE_LAUNCH_PERCENT = 0.5
 
     INTAKE_INTAKING_PERCENT = 0.6
@@ -43,7 +43,7 @@ kGoalHeightMeters = 1.83
 kShooterHeightMeters = 0.5
 kShooterAngleDegrees = 70.0
 kShooterWheelDiameterMeters = 0.1016
-kShooterRecoveryFactor = 2.0
+kShooterRecoveryFactor = 4.0
 kShooterPhysicsTuning = 1.0
 
 # PID Constants

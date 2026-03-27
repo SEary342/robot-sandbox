@@ -126,7 +126,7 @@ class ShooterSubsystem(Subsystem):
             # Using the new LookupTable from constants
             target_rpm = constants.kShooterDistanceToRPM.interpolate(distance)
 
-        self.setTargetRPM(target_rpm)
+        self.setTargetRPM(5000)
 
     def setTargetRPM(self, rpm: float):
         self.targetRPM = rpm
