@@ -26,7 +26,7 @@ class FuelConstants:
     LAUNCHING_LAUNCHER_PERCENT = 0.85
     INTAKE_EJECT_PERCENT = -0.8
 
-    SPIN_UP_SECONDS = 1.2
+    SPIN_UP_SECONDS = 0.8
 
 
 # Shooter Constants
