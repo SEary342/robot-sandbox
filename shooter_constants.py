@@ -18,8 +18,8 @@ class LookupTable:
 
 
 class FuelConstants:
-    INDEXER_INTAKING_PERCENT = 0.4
-    INDEXER_LAUNCHING_PERCENT = -0.3
+    INDEXER_INTAKING_PERCENT = 0.8
+    INDEXER_LAUNCHING_PERCENT = -0.6
     INDEXER_SPIN_UP_PRE_LAUNCH_PERCENT = 0.5
 
     INTAKE_INTAKING_PERCENT = 0.6
@@ -80,10 +80,10 @@ targets = (9, 10, 26, 25)
 kCameraOffsetX = 0.2
 kCameraOffsetY = 0.0
 kCameraHeight = 0.5
-kCameraPitch = math.radians(-30.0)
+kCameraPitch = math.radians(0)
 
 kCamera1Name = "Arducam_OV9281_USB_Camera"
 kCamera1OffsetX = 0.2
 kCamera1OffsetY = 0.1
 kCamera1Height = 0.5
-kCamera1Pitch = math.radians(-30.0)
+kCamera1Pitch = math.radians(0)
