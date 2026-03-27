@@ -7,13 +7,7 @@
         {
           "type": "path",
           "data": {
-            "pathName": "AFH"
-          }
-        },
-        {
-          "type": "path",
-          "data": {
-            "pathName": "BGK"
+            "pathName": "COMP1"
           }
         }
       ]
