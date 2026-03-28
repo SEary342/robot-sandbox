@@ -216,13 +216,17 @@ class RobotContainer:
         """
         :returns: the command to run in autonomous
         """
-        return LaunchSequence(self.shooter, self.robotDrive, 3000.0)
-        if self.chosenAuto is not None:
-            return self.chosenAuto.getSelected()
+       #TODO: add back if not working  return LaunchSequence(self.shooter, self.robotDrive, 3000.0)
+        try:
 
-        return commands2.PrintCommand(
-            "No autonomous command selected or AutoBuilder failed"
-        )
+            if self.chosenAuto is not None:
+                return self.chosenAuto.getSelected()
+            else: # choose standardshooter if they dont select anything. 
+                return LaunchSequence(self.shooter, self.robotDrive, 3000.0)
+            
+        except Exception as e:
+            wpilib.reportError(f"AutoBuilder failed: {e}")
+            
 
     def configureAutos(self):
         self.chosenAuto = None
@@ -234,6 +238,10 @@ class RobotContainer:
             NamedCommands.registerCommand("ClimbUp", ClimbUp(self.climber))
             NamedCommands.registerCommand("ClimbDown", ClimbDown(self.climber))
             NamedCommands.registerCommand("AimAtTarget", AimAtTarget(self.robotDrive, constants.targets))
+            
+            # CRITICAL: PathPlanner configuration MUST happen AFTER NamedCommands 
+            # are registered but BEFORE the chooser is built.
+            self.robotDrive.configurePathPlanner()
 
             self.chosenAuto = AutoBuilder.buildAutoChooser()
             wpilib.SmartDashboard.putData("Chosen Auto", self.chosenAuto)

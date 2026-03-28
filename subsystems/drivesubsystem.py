@@ -202,14 +202,6 @@ class DriveSubsystem(Subsystem):
             print("Test Bench Mode: Vision Disabled")
             self.photon_estimator = None
 
-        # --- PathPlanner Setup ---
-        # PathPlanner is a tool that lets us draw paths on a computer and have the robot follow them.
-        try:
-            self.configurePathPlanner()
-        except Exception as e:
-            # If something goes wrong (like the config file is missing), don't crash the whole robot.
-            print(f"PathPlanner Config Failed: {e}")
-
         SmartDashboard.setDefaultNumber("driveKPMult", 0.5)
         SmartDashboard.setDefaultNumber("driveKDMult", 0.5)
         SmartDashboard.setDefaultNumber("driveKFFMult", 1.0)
